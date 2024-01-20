@@ -19,6 +19,7 @@
       use icepack_parameters, only: viscosity_dyn, rhoi, rhos, rhow, Timelt, Tffresh, Lfresh
       use icepack_parameters, only: gravit, depressT, rhofresh, kice, pndaspect, use_smliq_pnd
       use icepack_parameters, only: ktherm, frzpnd, dpscale, hi_min
+      use icepack_parameters, only: pndfrbd
       use icepack_tracers,    only: nilyr
       use icepack_warnings, only: warnstr, icepack_warnings_add
       use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
@@ -231,7 +232,17 @@
 
             ! limit pond depth to maintain nonnegative freeboard
             hpond_tmp = hpondn
-            hpondn = min(hpondn, ((rhow-rhoi)*hi - rhos*hs)/rhofresh)
+            if (trim(pndfrbd) == 'floor') then
+               hpondn = min(hpondn, ((rhow-rhoi)*hi - rhos*hs)/rhofresh)
+            elseif (trim(pndfrbd) == 'category') then
+               hpondn = min(hpondn, ((rhow-rhoi)*hi - rhos*hs) &
+               /(rhofresh*apondn))
+            else
+               call icepack_warnings_add(subname//" invalid pndfrbd option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+            endif
+
             ! The way apondn is used is very confusing but at this point
             ! apondn is the fraction of the entire category (level + deformed)
             ! with ponds on it. Thus, multiplying the change in hpondn (i.e.,
