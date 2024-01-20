@@ -57,7 +57,8 @@
                                           flwoutn,  fsurfn,   &
                                           fcondtop, fcondbot, &
                                           fadvheat, snoice,   &
-                                          smice,    smliq)
+                                          smice,    smliq,    &
+                                          flpnd,    expnd)
 
     ! solve the enthalpy and bulk salinity of the ice for a single column
 
@@ -115,6 +116,10 @@
          zSin        , & ! internal ice layer salinities
          zqsn        , & ! snow layer enthalpy (J m-3)
          zTsn            ! internal snow layer temperatures
+     
+     real (kind=dbl_kind), intent(inout):: &
+         flpnd       , & ! pond flushing rate due to ice permeability (m/s)
+         expnd           ! exponential pond drainage rate (m/s)
 
     ! local variables
     real(kind=dbl_kind), dimension(1:nilyr) :: &
@@ -336,7 +341,7 @@
     endif
 
     ! drain ponds from flushing
-    call flush_pond(w, hpond, apond, dt)
+    call flush_pond(w, hpond, apond, dt, flpnd, expnd)
     if (icepack_warnings_aborted(subname)) return
 
     ! flood snow ice
@@ -3311,7 +3316,7 @@
 
 !=======================================================================
 
-  subroutine flush_pond(w, hpond, apond, dt)
+  subroutine flush_pond(w, hpond, apond, dt, flpnd, expnd)
 
     ! given a flushing velocity drain the meltponds
 
@@ -3321,7 +3326,12 @@
          dt        ! time step (s)
 
     real(kind=dbl_kind), intent(inout) :: &
-         hpond     ! melt pond thickness (m)
+         hpond , & ! melt pond thickness (m)
+         flpnd , & ! pond flushing rate due to ice permeability (m/s)
+         expnd     ! exponential pond drainage rate (m/s)
+     
+    real(kind=dbl_kind) :: &
+         hpond_tmp ! local variable for hpond before flushing
 
     real(kind=dbl_kind), parameter :: &
          hpond0 = 0.01_dbl_kind
@@ -3334,16 +3344,27 @@
     if (tr_pond) then
        if (apond > c0 .and. hpond > c0) then
 
+          hpond_tmp = hpond
           ! flush pond through mush
           hpond = hpond - w * dt / apond
 
           hpond = max(hpond, c0)
+          ! apond here is just the pond tracer for the category, i.e. it could 
+          ! be the fraction of level ice that is ponded, not the fraction
+          ! of the category that is. Thus, flpnd is now the average height of
+          ! meltwater lost averaged over the level area. Need to adjust for
+          ! the difference between level area and category area outside of
+          ! thermo_vertical
+          flpnd = (hpond_tmp - hpond) * apond
 
+          hpond_tmp = hpond
           ! exponential decay of pond
           lambda_pond = c1 / (tscale_pnd_drain * 24.0_dbl_kind * 3600.0_dbl_kind)
           hpond = hpond - lambda_pond * dt * (hpond + hpond0)
 
           hpond = max(hpond, c0)
+          ! Same logic as above for flpnd
+          expnd = (hpond_tmp - hpond) * apond
 
        endif
     endif
