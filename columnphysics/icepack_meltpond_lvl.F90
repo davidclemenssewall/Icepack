@@ -27,7 +27,7 @@
       implicit none
 
       private
-      public :: compute_ponds_lvl
+      public :: compute_ponds_lvl, pond_hypsometry
 
 !=======================================================================
 
@@ -83,6 +83,7 @@
 
       real (kind=dbl_kind) :: &
          volpn, &     ! pond volume per unit area (m)
+         dhpondn , &  ! vertical change in pond height (m)
          dvn_temp     ! local variable for change in volume due to rfrac
 
       real (kind=dbl_kind), dimension (nilyr) :: &
@@ -210,16 +211,18 @@
             ! update pond area and depth
             !-----------------------------------------------------------
             hypso_type = 'aspect_change'
+            dhpondn = c0
             call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
-                                 aicen, hypso_type)
+                                 aicen, hypso_type, dhpondn)
 
             ! limit pond depth to maintain nonnegative freeboard
             if (trim(pndfrbd) == 'floor') then
-               dvn = min(c0, (((rhow-rhoi)*hi - rhos*hs)/rhofresh - hpondn) &
-                              * aicen * apondn)
+               dhpondn = min(c0, ((rhow-rhoi)*hi - rhos*hs)/rhofresh - hpondn)
+               dvn = dhpondn * aicen * apondn
             elseif (trim(pndfrbd) == 'category') then
-               dvn = min(c0, (((rhow-rhoi)*hi - rhos*hs)/(rhofresh*apondn) & 
-                              - hpondn) * aicen * apondn)
+               dhpondn = min(c0, ((rhow-rhoi)*hi - rhos*hs)/(rhofresh*apondn) & 
+                                 - hpondn)
+               dvn = dhpondn * aicen * apondn
             else
                call icepack_warnings_add(subname//" invalid pndfrbd option" )
                call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
@@ -227,12 +230,13 @@
             endif
             hypso_type = 'vertical'
             call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
-                                 aicen, hypso_type)
+                                 aicen, hypso_type, dhpondn)
 
             ! Meltwater volume change per grid cell area divided by aicen here 
             ! yields the meltwater volume lost averaged over the category area
             ! analogous to how melttn is defined. Note sign flip
-            frpndn = -dvn / aicen
+            !frpndn = -dvn / aicen
+            frpndn = -dhpondn * apondn
             
             ! fraction of grid cell covered by ponds
             apondn = apondn * aicen
@@ -346,7 +350,7 @@
 
       subroutine pond_hypsometry(volpn, apondn, hpondn,  &
                                  dvn,   alvln,  aicen,   &
-                                 type)
+                                 type,  dhpondn)
 
       real (kind=dbl_kind), intent(in) :: &
          dvn     , & ! change in pond volume per unit area of grid cell (m)
@@ -357,26 +361,34 @@
          type        ! how to change pond depth and area
 
       real (kind=dbl_kind), intent(inout) :: &
+         dhpondn , & ! change in pond depth, only used if type=='vertical'
          volpn   , & ! pond volume per unit area of the grid cell (m)
          apondn  , & ! pond area fraction of the category (incl. deformed)
          hpondn      ! pond depth (m)
       
+      real (kind=dbl_kind) :: &
+         temp        ! temporary variable for recording changes
+      
       character(len=*),parameter :: subname='(pond_hypsometry)'
-
-      ! update pond volume
-      volpn = volpn + dvn
-
-      if (volpn <= c0) then
-         volpn = c0
-         apondn = c0
-         hpondn = c0
-      endif
 
       ! Change pond depth and area
       if (trim(type) == 'vertical') then
          ! Only change depth, not area
-         hpondn = max(c0, hpondn + dvn / (aicen * apondn))
+         temp = hpondn
+         hpondn = max(c0, hpondn + dhpondn)
+         volpn = hpondn * aicen * apondn
+         if (hpondn == c0) then
+            apondn = c0
+         endif
+         dhpondn = hpondn - temp
       elseif (trim(type) == 'aspect_change') then
+         ! update pond volume
+         volpn = volpn + dvn
+         if (volpn <= c0) then
+            volpn = c0
+            apondn = c0
+            hpondn = c0
+         endif
          ! Apply pndaspect ratio to change in depth and area
          if (apondn*aicen > puny) then ! existing ponds
             apondn = max(c0, min(alvln, &
