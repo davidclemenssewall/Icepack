@@ -406,6 +406,22 @@
             hpondn = c0
          endif
          apondn = max(apondn, c0)
+      elseif (trim(type) == 'aspect_fixed') then
+         ! update pond volume
+         volpn = volpn + dvn
+         if (volpn <= c0) then
+            volpn = c0
+            apondn = c0
+            hpondn = c0
+         endif
+
+         ! compute the pond area and depth
+         apondn = min(alvln, sqrt(volpn/(pndaspect*aicen)))
+         if (apondn >= alvln) then ! pond fills all available space
+            hpondn = volpn / (aicen * apondn)
+         else ! pond follows aspect ratio
+            hpondn = pndaspect * apondn
+         endif
       else
          call icepack_warnings_add(subname//" invalid type option" )
          call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
