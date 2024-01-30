@@ -10,15 +10,17 @@
   use icepack_parameters, only: a_rapid_mode, Rac_rapid_mode, tscale_pnd_drain
   use icepack_parameters, only: aspect_rapid_mode, dSdt_slow_mode, phi_c_slow_mode
   use icepack_parameters, only: sw_redist, sw_frac, sw_dtemp
+  use icepack_parameters, only: pndhyps
   use icepack_mushy_physics, only: icepack_mushy_density_brine, enthalpy_brine, icepack_enthalpy_snow
   use icepack_mushy_physics, only: enthalpy_mush_liquid_fraction
   use icepack_mushy_physics, only: icepack_mushy_temperature_mush, icepack_mushy_liquid_fraction
   use icepack_mushy_physics, only: temperature_snow, temperature_mush_liquid_fraction
   use icepack_mushy_physics, only: liquidus_brine_salinity_mush, liquidus_temperature_mush
   use icepack_mushy_physics, only: conductivity_mush_array, conductivity_snow_array
-  use icepack_tracers, only: tr_pond
+  use icepack_tracers, only: tr_pond, tr_pond_lvl
   use icepack_therm_shared, only: surface_heat_flux, dsurface_heat_flux_dTsf
   use icepack_therm_shared, only: ferrmax
+  use icepack_meltpond_lvl, only: pond_hypsometry
   use icepack_warnings, only: warnstr, icepack_warnings_add
   use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
 
@@ -47,7 +49,7 @@
                                           fswsfc,   fswint,   &
                                           Sswabs,   Iswabs,   &
                                           hilyr,    hslyr,    &
-                                          apond,    hpond,    &
+                                          apnd,    hpond,    &
                                           zqin,     zTin,     &
                                           zqsn,     zTsn,     &
                                           zSin,               &
@@ -58,7 +60,8 @@
                                           fcondtop, fcondbot, &
                                           fadvheat, snoice,   &
                                           smice,    smliq,    &
-                                          flpnd,    expnd)
+                                          flpnd,    expnd,    &
+                                          alvl,     aicen)
 
     ! solve the enthalpy and bulk salinity of the ice for a single column
 
@@ -77,7 +80,9 @@
          shcoef      , & ! transfer coefficient for sensible heat
          lhcoef      , & ! transfer coefficient for latent heat
          Tbot        , & ! ice bottom surfce temperature (deg C)
-         sss             ! sea surface salinity (PSU)
+         sss         , & ! sea surface salinity (PSU)
+         alvl        , & ! level ice fraction
+         aicen           ! category area fraction
 
     real (kind=dbl_kind), intent(inout) :: &
          fswsfc      , & ! SW absorbed at ice/snow surface (W m-2)
@@ -86,7 +91,7 @@
     real (kind=dbl_kind), intent(inout) :: &
          hilyr       , & ! ice layer thickness (m)
          hslyr       , & ! snow layer thickness (m)
-         apond       , & ! melt pond area fraction
+         apnd       , &  ! melt pond area fraction tracer
          hpond           ! melt pond depth (m)
 
     real (kind=dbl_kind), dimension (:), intent(inout) :: &
@@ -194,7 +199,7 @@
                            phi,    nilyr, &
                            hin,    hsn,   &
                            hilyr,         &
-                           hpond,  apond, &
+                           hpond,  apnd, &
                            dt,     w)
     if (icepack_warnings_aborted(subname)) return
 
@@ -341,7 +346,7 @@
     endif
 
     ! drain ponds from flushing
-    call flush_pond(w, hpond, apond, dt, flpnd, expnd)
+    call flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen)
     if (icepack_warnings_aborted(subname)) return
 
     ! flood snow ice
@@ -3316,56 +3321,89 @@
 
 !=======================================================================
 
-  subroutine flush_pond(w, hpond, apond, dt, flpnd, expnd)
+  subroutine flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen)
 
     ! given a flushing velocity drain the meltponds
 
     real(kind=dbl_kind), intent(in) :: &
          w     , & ! vertical flushing Darcy flow rate (m s-1)
-         apond , & ! melt pond area (-)
-         dt        ! time step (s)
+         dt    , & ! time step (s)
+         alvl  , & ! level ice fraction
+         aicen     ! category area fraction
 
     real(kind=dbl_kind), intent(inout) :: &
+         apnd  , & ! melt pond area tracer (-)
          hpond , & ! melt pond thickness (m)
          flpnd , & ! pond flushing rate due to ice permeability (m/s)
          expnd     ! exponential pond drainage rate (m/s)
      
     real(kind=dbl_kind) :: &
-         hpond_tmp ! local variable for hpond before flushing
+         dvn    , & ! change in pond volume per unit grid cell area (m)
+         dhpondn, & ! change in pond depth (m)
+         volpn  , & ! pond volume per unit grid cell area (m)
+         apondn     ! pond area fraction of category
 
     real(kind=dbl_kind), parameter :: &
          hpond0 = 0.01_dbl_kind
 
     real(kind=dbl_kind) :: &
          lambda_pond ! 1 / macroscopic drainage time scale (s)
+     
+    character (len=char_len) :: &
+         hypso_type        ! string indicating how to change pond depth-area
 
     character(len=*),parameter :: subname='(flush_pond)'
 
     if (tr_pond) then
-       if (apond > c0 .and. hpond > c0) then
+       if (apnd > c0 .and. hpond > c0) then
 
-          hpond_tmp = hpond
+          ! compute pond fraction of category and pond volume
+          if (tr_pond_lvl) then
+               apondn = apnd * alvl
+          else
+               apondn = apnd
+          endif
+          volpn = hpond * aicen * apondn          
+
           ! flush pond through mush
-          hpond = hpond - w * dt / apond
-
-          hpond = max(hpond, c0)
-          ! apond here is just the pond tracer for the category, i.e. it could 
-          ! be the fraction of level ice that is ponded, not the fraction
-          ! of the category that is. Thus, flpnd is now the average height of
-          ! meltwater lost averaged over the level area. Need to adjust for
-          ! the difference between level area and category area outside of
-          ! thermo_vertical
-          flpnd = (hpond_tmp - hpond) * apond
-
-          hpond_tmp = hpond
+          dhpondn = - w * dt / apnd
+          dvn = dhpondn * aicen * apondn
+          if (trim(pndhyps) == 'none') then
+               hypso_type = 'vertical'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                   aicen, hypso_type, dhpondn)
+               ! flpnd is height lost over the entire category
+               flpnd = - dhpondn * apondn
+          elseif (trim(pndhyps) == 'fixed') then
+               hypso_type = 'aspect_fixed'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                    aicen, hypso_type, dhpondn)
+               flpnd = - dvn / aicen
+          else
+               call icepack_warnings_add(subname//" invalid pndhyps option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+          endif
+               
           ! exponential decay of pond
           lambda_pond = c1 / (tscale_pnd_drain * 24.0_dbl_kind * 3600.0_dbl_kind)
-          hpond = hpond - lambda_pond * dt * (hpond + hpond0)
-
-          hpond = max(hpond, c0)
-          ! Same logic as above for flpnd
-          expnd = (hpond_tmp - hpond) * apond
-
+          dhpondn = -lambda_pond * dt * (hpond + hpond0)
+          dvn = dhpondn * aicen * apondn
+          if (trim(pndhyps) == 'none') then
+               hypso_type = 'vertical'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                   aicen, hypso_type, dhpondn)
+               expnd = - dhpondn * apondn
+          elseif (trim(pndhyps) == 'fixed') then
+               hypso_type = 'aspect_fixed'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                        aicen, hypso_type, dhpondn)
+               expnd = - dvn / aicen
+          else
+               call icepack_warnings_add(subname//" invalid pndhyps option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+          endif
        endif
     endif
 

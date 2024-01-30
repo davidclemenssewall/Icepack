@@ -329,7 +329,9 @@
 
       ! level-ice ponds
       character (len=char_len), public :: &
-         frzpnd    = 'cesm'           ! pond refreezing parameterization
+         frzpnd    = 'cesm'        , & ! pond refreezing parameterization
+         pndfrbd   = 'category'       , & ! domain to apply pond freeboard constraint on 'floor' is default
+         pndhyps   = 'fixed'            ! option for pond depth-area changes 'none' is default
 
       real (kind=dbl_kind), public :: &
          dpscale   = 0.001_dbl_kind,& ! alter e-folding time scale for flushing (ktherm=1)
