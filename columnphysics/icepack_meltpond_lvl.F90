@@ -210,10 +210,20 @@
             !-----------------------------------------------------------
             ! update pond area and depth
             !-----------------------------------------------------------
-            hypso_type = 'aspect_change'
             dhpondn = c0
-            call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
-                                 aicen, hypso_type, dhpondn)
+            if (trim(pndhyps) == 'none') then
+               hypso_type = 'aspect_change'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
+                                    aicen, hypso_type, dhpondn)
+            elseif (trim(pndhyps) == 'fixed') then
+               hypso_type = 'aspect_fixed'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
+                                    aicen, hypso_type, dhpondn)
+               else
+                  call icepack_warnings_add(subname//" invalid pndhyps option" )
+                  call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+                  if (icepack_warnings_aborted(subname)) return
+               endif
 
             ! limit pond depth to maintain nonnegative freeboard
             if (trim(pndfrbd) == 'floor') then
@@ -228,15 +238,24 @@
                call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
                if (icepack_warnings_aborted(subname)) return
             endif
-            hypso_type = 'vertical'
-            call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
-                                 aicen, hypso_type, dhpondn)
-
-            ! Meltwater volume change per grid cell area divided by aicen here 
-            ! yields the meltwater volume lost averaged over the category area
-            ! analogous to how melttn is defined. Note sign flip
-            !frpndn = -dvn / aicen
-            frpndn = -dhpondn * apondn
+            if (trim(pndhyps) == 'none') then
+               hypso_type = 'vertical'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, &
+                                    aicen, hypso_type, dhpondn)
+               frpndn = -dhpondn * apondn
+            elseif (trim(pndhyps) == 'fixed') then
+               hypso_type = 'aspect_fixed'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
+                                    aicen, hypso_type, dhpondn)
+               ! Meltwater volume change per grid cell area divided by aicen here 
+               ! yields the meltwater volume lost averaged over the category area
+               ! analogous to how melttn is defined. Note sign flip
+               frpndn = - dvn / aicen
+             else
+                  call icepack_warnings_add(subname//" invalid pndhyps option" )
+                  call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+                  if (icepack_warnings_aborted(subname)) return
+             endif
             
             ! fraction of grid cell covered by ponds
             apondn = apondn * aicen
