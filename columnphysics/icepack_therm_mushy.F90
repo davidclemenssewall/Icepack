@@ -58,7 +58,8 @@
                                           fcondtop, fcondbot, &
                                           fadvheat, snoice,   &
                                           smice,    smliq,    &
-                                          flpnd,    expnd)
+                                          flpnd,    expnd,    &
+                                          aicen)
 
     ! solve the enthalpy and bulk salinity of the ice for a single column
 
@@ -70,6 +71,7 @@
          dt              ! time step (s)
 
     real (kind=dbl_kind), intent(in) :: &
+         aicen       , & ! category area fraction
          rhoa        , & ! air density (kg/m^3)
          flw         , & ! incoming longwave radiation (W/m^2)
          potT        , & ! air potential temperature  (K)
@@ -341,7 +343,7 @@
     endif
 
     ! drain ponds from flushing
-    call flush_pond(w, hpond, apond, dt, flpnd, expnd)
+    call flush_pond(w, hpond, apond, dt, flpnd, expnd, aicen)
     if (icepack_warnings_aborted(subname)) return
 
     ! flood snow ice
@@ -3316,11 +3318,12 @@
 
 !=======================================================================
 
-  subroutine flush_pond(w, hpond, apond, dt, flpnd, expnd)
+  subroutine flush_pond(w, hpond, apond, dt, flpnd, expnd, aicen)
 
     ! given a flushing velocity drain the meltponds
 
     real(kind=dbl_kind), intent(in) :: &
+         aicen , & ! category area fraction
          w     , & ! vertical flushing Darcy flow rate (m s-1)
          apond , & ! melt pond area (-)
          dt        ! time step (s)
@@ -3346,7 +3349,7 @@
 
           hpond_tmp = hpond
           ! flush pond through mush
-          hpond = hpond - w * dt / apond
+          hpond = hpond - w * dt * aicen / (apond * aicen)
 
           hpond = max(hpond, c0)
           ! apond here is just the pond tracer for the category, i.e. it could 

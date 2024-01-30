@@ -331,7 +331,8 @@
                                               fcondtopn, fcondbotn, &
                                               fadvocn,   snoice,    &
                                               smice,     smliq,     &
-                                              flpnd,     expnd)
+                                              flpnd,     expnd,     &
+                                              aicen)
             if (icepack_warnings_aborted(subname)) return
 
          else ! ktherm
