@@ -10,7 +10,7 @@
   use icepack_parameters, only: a_rapid_mode, Rac_rapid_mode, tscale_pnd_drain
   use icepack_parameters, only: aspect_rapid_mode, dSdt_slow_mode, phi_c_slow_mode
   use icepack_parameters, only: sw_redist, sw_frac, sw_dtemp
-  use icepack_parameters, only: pndhyps
+  use icepack_parameters, only: pndhyps, pndfrbd
   use icepack_mushy_physics, only: icepack_mushy_density_brine, enthalpy_brine, icepack_enthalpy_snow
   use icepack_mushy_physics, only: enthalpy_mush_liquid_fraction
   use icepack_mushy_physics, only: icepack_mushy_temperature_mush, icepack_mushy_liquid_fraction
@@ -20,7 +20,7 @@
   use icepack_tracers, only: tr_pond, tr_pond_lvl
   use icepack_therm_shared, only: surface_heat_flux, dsurface_heat_flux_dTsf
   use icepack_therm_shared, only: ferrmax
-  use icepack_meltpond_lvl, only: pond_hypsometry
+  use icepack_meltpond_lvl, only: pond_hypsometry, pond_head
   use icepack_warnings, only: warnstr, icepack_warnings_add
   use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
 
@@ -200,6 +200,7 @@
                            hin,    hsn,   &
                            hilyr,         &
                            hpond,  apnd, &
+                           alvl,          &
                            dt,     w)
     if (icepack_warnings_aborted(subname)) return
 
@@ -3211,7 +3212,8 @@
                                phi,    nilyr, &
                                hin,    hsn,   &
                                hilyr,         &
-                               hpond,  apond, &
+                               hpond,  apnd,  &
+                               alvl,          &
                                dt,     w)
 
     ! calculate the vertical flushing Darcy velocity (positive downward)
@@ -3226,7 +3228,8 @@
     real(kind=dbl_kind), intent(in) :: &
          hilyr     , & ! ice layer thickness (m)
          hpond     , & ! melt pond thickness (m)
-         apond     , & ! melt pond area (-)
+         apnd      , & ! melt pond area (-)
+         alvl      , & ! level ice fraction
          hsn       , & ! snow thickness (m)
          hin       , & ! ice thickness (m)
          dt            ! time step (s)
@@ -3247,6 +3250,7 @@
          w_down_max , & ! maximum downward flushing Darcy flow rate (m s-1)
          phi_min    , & ! minimum porosity in the mush
          wlimit     , & ! limit to w to avoid advecting all brine in layer
+         apondn     , & ! category pond fraction (incl. deformed ice)
          dhhead         ! hydraulic head (m)
 
     integer(kind=int_kind) :: &
@@ -3286,11 +3290,26 @@
 
        perm_harm = real(nilyr,dbl_kind) / perm_harm
 
+       ! ponded fraction of entire category
+       apondn = apnd * alvl
+
        ! calculate ocean surface height above bottom of ice
-       hocn = (ice_mass + hpond * apond * rhow + hsn * rhos) / rhow
+       if (trim(pndfrbd) == 'floor') then
+          ! This is consistent with existing level pond parameterization
+          ! although note that it's inconsistent with the freeboard calculation
+          ! only being over the pond floor as is done elsewhere
+          hocn = (ice_mass + hpond * apnd * rhow + hsn * rhos) / rhow
+       elseif (trim(pndfrbd) == 'category') then
+          hocn = (ice_mass + hpond * apondn * rhow + hsn * rhos) / rhow
+       else
+          call icepack_warnings_add(subname//" invalid pndfrbd option" )
+          call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+          if (icepack_warnings_aborted(subname)) return
+       endif
 
        ! calculate brine height above bottom of ice
-       hbrine = hin + hpond
+       call pond_head(apondn, hpond, alvl, hin, hbrine)
+       !hbrine = hin + hpond
 
        ! pressure head
        dhhead = max(hbrine - hocn,c0)
@@ -3299,7 +3318,7 @@
        w = (perm_harm * rhow * gravit * (dhhead / hin)) / viscosity_dyn
 
        ! maximum down flow to drain pond
-       w_down_max = (hpond * apond) / dt
+       w_down_max = (hpond * apnd) / dt
 
        ! limit flow
        w = min(w,w_down_max)

@@ -19,7 +19,7 @@
       use icepack_parameters, only: viscosity_dyn, rhoi, rhos, rhow, Timelt, Tffresh, Lfresh
       use icepack_parameters, only: gravit, depressT, rhofresh, kice, pndaspect, use_smliq_pnd
       use icepack_parameters, only: ktherm, frzpnd, dpscale, hi_min
-      use icepack_parameters, only: pndfrbd, pndhyps
+      use icepack_parameters, only: pndfrbd, pndhyps, pndhead
       use icepack_tracers,    only: nilyr
       use icepack_warnings, only: warnstr, icepack_warnings_add
       use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
@@ -27,7 +27,7 @@
       implicit none
 
       private
-      public :: compute_ponds_lvl, pond_hypsometry
+      public :: compute_ponds_lvl, pond_hypsometry, pond_head
 
 !=======================================================================
 
@@ -449,6 +449,50 @@
 
       end subroutine pond_hypsometry
 
+!=======================================================================
+
+! Compute the elevation of pond surface above the ice bottom
+
+      subroutine pond_head(apondn, hpondn, alvln, hin, hpsurf)
+
+      real (kind=dbl_kind), intent(in) :: &
+         hin     , & ! category mean ice thickness
+         apondn  , & ! pond area fraction of the category (incl. deformed)
+         alvln   , & ! level ice fraction of category area
+         hpondn      ! mean pond depth (m)
+
+      real (kind=dbl_kind), intent(out) :: &
+         hpsurf   ! height of pond surface above base of the ice (m)
+      
+      character(len=*),parameter :: subname='(pond_head)'
+
+      if (trim(pndhead) == 'perched') then
+         hpsurf = hin + hpondn
+      elseif (trim(pndhead) == 'hyps') then
+         if (trim(pndhyps) == 'fixed') then
+            ! Applying a fixed aspect ratio to the ponds implicitly assumes
+            ! that the hypsometric curve has a constant slope of double the
+            ! aspect ratio. We'll assume that the deformed ice in the category
+            ! also has the same mean thickness as the entire category.
+            ! With these assumptions, we can derive the height of the mean
+            ! pond surface above the mean base of the category
+            if (apondn < alvln) then
+               hpsurf = hin + 2*hpondn - alvln*pndaspect
+            else
+               hpsurf = hin + hpondn ! ponds cover all available area
+            endif
+         else
+            call icepack_warnings_add(subname//" unsupported pndhyps option" )
+            call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+            if (icepack_warnings_aborted(subname)) return
+         endif
+      else
+         call icepack_warnings_add(subname//" invalid pndhead option" )
+         call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+         if (icepack_warnings_aborted(subname)) return
+      endif
+
+      end subroutine pond_head
 
 !=======================================================================
 
