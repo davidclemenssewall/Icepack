@@ -331,15 +331,17 @@
       character (len=char_len), public :: &
          frzpnd    = 'cesm'        , & ! pond refreezing parameterization
          pndfrbd   = 'floor'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
-         pndhyps   = 'fixed'        , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope)
-         pndhead   = 'hyps'         ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndhyps   = 'none'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel' changes aspect ratio based on hi for target sea level pond fraction
+         pndhead   = 'perched'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndmacr   = 'lambda'      , & ! how to parameterize macro pond drainage 'lambda' is default
 
       real (kind=dbl_kind), public :: &
          dpscale   = 0.001_dbl_kind,& ! alter e-folding time scale for flushing (ktherm=1)
          rfracmin  = 0.15_dbl_kind, & ! minimum retained fraction of meltwater
          rfracmax  = 0.85_dbl_kind, & ! maximum retained fraction of meltwater
-         pndaspect = 0.8_dbl_kind, &  ! ratio of pond depth to area fraction
-         hs1       = 0.03_dbl_kind    ! snow depth for transition to bare pond ice (m)
+         pndaspect = 0.8_dbl_kind,  & ! ratio of pond depth to area fraction
+         hs1       = 0.03_dbl_kind, & ! snow depth for transition to bare pond ice (m)
+         apond_sl  = 0.27_dbl_kind    ! pond area fraction for sea level ponds
 
       ! topo ponds
       real (kind=dbl_kind), public :: &

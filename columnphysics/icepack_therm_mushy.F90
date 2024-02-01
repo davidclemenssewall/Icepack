@@ -10,7 +10,7 @@
   use icepack_parameters, only: a_rapid_mode, Rac_rapid_mode, tscale_pnd_drain
   use icepack_parameters, only: aspect_rapid_mode, dSdt_slow_mode, phi_c_slow_mode
   use icepack_parameters, only: sw_redist, sw_frac, sw_dtemp
-  use icepack_parameters, only: pndhyps, pndfrbd
+  use icepack_parameters, only: pndhyps, pndfrbd, pndmacr
   use icepack_mushy_physics, only: icepack_mushy_density_brine, enthalpy_brine, icepack_enthalpy_snow
   use icepack_mushy_physics, only: enthalpy_mush_liquid_fraction
   use icepack_mushy_physics, only: icepack_mushy_temperature_mush, icepack_mushy_liquid_fraction
@@ -347,7 +347,7 @@
     endif
 
     ! drain ponds from flushing
-    call flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen)
+    call flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen, hin)
     if (icepack_warnings_aborted(subname)) return
 
     ! flood snow ice
@@ -3340,7 +3340,7 @@
 
 !=======================================================================
 
-  subroutine flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen)
+  subroutine flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen, hin)
 
     ! given a flushing velocity drain the meltponds
 
@@ -3348,7 +3348,8 @@
          w     , & ! vertical flushing Darcy flow rate (m s-1)
          dt    , & ! time step (s)
          alvl  , & ! level ice fraction
-         aicen     ! category area fraction
+         aicen , & ! category area fraction
+         hin       ! category mean ice thickness
 
     real(kind=dbl_kind), intent(inout) :: &
          apnd  , & ! melt pond area tracer (-)
@@ -3390,33 +3391,52 @@
           if (trim(pndhyps) == 'none') then
                hypso_type = 'vertical'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
-                                   aicen, hypso_type, dhpondn)
+                                   aicen, hypso_type, dhpondn, hin)
                ! flpnd is height lost over the entire category
                flpnd = - dhpondn * apondn
           elseif (trim(pndhyps) == 'fixed') then
                hypso_type = 'aspect_fixed'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
-                                    aicen, hypso_type, dhpondn)
+                                    aicen, hypso_type, dhpondn, hin)
+               flpnd = - dvn / aicen
+          elseif (trim(pndhyps) == 'sealevel') then
+               hypso_type = 'sealevel'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                        aicen, hypso_type, dhpondn, hin)
                flpnd = - dvn / aicen
           else
                call icepack_warnings_add(subname//" invalid pndhyps option" )
                call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
                if (icepack_warnings_aborted(subname)) return
           endif
-               
-          ! exponential decay of pond
-          lambda_pond = c1 / (tscale_pnd_drain * 24.0_dbl_kind * 3600.0_dbl_kind)
-          dhpondn = -lambda_pond * dt * (hpond + hpond0)
+          
+          ! Macro-scale (cracks, floe edges, seal holes) drainage of ponds
+          if (trim(pndmacr) == 'lambda') then
+               ! exponential decay of pond
+               lambda_pond = c1 / (tscale_pnd_drain * 24.0_dbl_kind * 3600.0_dbl_kind)
+               dhpondn = -lambda_pond * dt * (hpond + hpond0)
+          elseif (trim(pndmacr) == 'head') then
+               ! drain pond based on the pressure head
+          else
+               call icepack_warnings_add(subname//" invalid pndmacr option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+          endif
           dvn = dhpondn * aicen * apondn
           if (trim(pndhyps) == 'none') then
                hypso_type = 'vertical'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
-                                   aicen, hypso_type, dhpondn)
+                                   aicen, hypso_type, dhpondn, hin)
                expnd = - dhpondn * apondn
           elseif (trim(pndhyps) == 'fixed') then
                hypso_type = 'aspect_fixed'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
-                                        aicen, hypso_type, dhpondn)
+                                        aicen, hypso_type, dhpondn, hin)
+               expnd = - dvn / aicen
+          elseif (trim(pndhyps) == 'sealevel') then
+               hypso_type = 'sealevel'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                        aicen, hypso_type, dhpondn, hin)
                expnd = - dvn / aicen
           else
                call icepack_warnings_add(subname//" invalid pndhyps option" )
