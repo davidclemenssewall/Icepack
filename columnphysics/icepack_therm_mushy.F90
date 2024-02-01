@@ -3264,32 +3264,10 @@
     ! only flush if ponds are active
     if (tr_pond) then
 
-       ice_mass  = c0
-       perm_harm = c0
-       phi_min   = c1
-
-       do k = 1, nilyr
-
-          ! liquid fraction
-          !phi = icepack_mushy_liquid_fraction(zTin(k), zSin(k))
-          phi_min = min(phi_min,phi(k))
-
-          ! permeability
-          perm = permeability(phi(k))
-
-          ! ice mass
-          ice_mass = ice_mass + phi(k)        * icepack_mushy_density_brine(liquidus_brine_salinity_mush(zTin(k))) + &
-               (c1 - phi(k)) * rhoi
-
-          ! permeability harmonic mean
-          perm_harm = perm_harm + c1 / (perm + 1e-30_dbl_kind)
-
-       enddo ! k
-
-       ice_mass = ice_mass * hilyr
-
-       perm_harm = real(nilyr,dbl_kind) / perm_harm
-
+       ! Compute ice mass and permeability
+       call ice_mass_perm(nilyr, zTin, phi, hilyr, &
+                          ice_mass, perm_harm, phi_min)
+       
        ! ponded fraction of entire category
        apondn = apnd * alvl
 
@@ -3447,6 +3425,65 @@
     endif
 
   end subroutine flush_pond
+
+!=======================================================================
+
+  subroutine ice_mass_perm(nilyr,       zTin,     &
+                           phi,         hilyr,    &
+                           ice_mass,    perm_harm,&
+                           phi_min)
+
+     ! calculate the ice mass and permeability
+
+     integer (kind=int_kind), intent(in) :: &
+          nilyr         ! number of ice layers
+
+     real(kind=dbl_kind), dimension(:), intent(in) :: &
+          zTin      , & ! ice layer temperature (C)
+          phi           ! ice layer liquid fraction
+     
+     real(kind=dbl_kind), intent(in) :: &
+          hilyr         ! ice layer thickness (m)
+     
+     real(kind=dbl_kind), intent(out) :: &
+          ice_mass  , & ! mass of ice incl. brine (kg/m2)
+          perm_harm , & ! harmonic mean of permeability (m2)
+          phi_min       ! minimum porosity in the mush
+
+     real(kind=dbl_kind) :: &
+          perm          ! ice layer permeability (m2)
+          
+     integer(kind=int_kind) :: &
+          k              ! ice layer index
+     
+     character(len=*),parameter :: subname='(ice_mass_perm)'
+
+     ice_mass  = c0
+     perm_harm = c0
+     phi_min   = c1
+
+     do k = 1, nilyr
+          ! liquid fraction
+          !phi = icepack_mushy_liquid_fraction(zTin(k), zSin(k))
+          phi_min = min(phi_min,phi(k))
+
+          ! permeability
+          perm = permeability(phi(k))
+
+          ! ice mass
+          ice_mass = ice_mass + phi(k) * icepack_mushy_density_brine(liquidus_brine_salinity_mush(zTin(k))) + &
+               (c1 - phi(k)) * rhoi
+
+          ! permeability harmonic mean
+          perm_harm = perm_harm + c1 / (perm + 1e-30_dbl_kind)
+
+       enddo ! k
+
+       ice_mass = ice_mass * hilyr
+
+       perm_harm = real(nilyr,dbl_kind) / perm_harm
+
+  end subroutine ice_mass_perm
 
  !=======================================================================
 

@@ -333,7 +333,7 @@
          pndfrbd   = 'floor'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
          pndhyps   = 'none'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel' changes aspect ratio based on hi for target sea level pond fraction
          pndhead   = 'perched'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
-         pndmacr   = 'lambda'      , & ! how to parameterize macro pond drainage 'lambda' is default
+         pndmacr   = 'lambda'          ! how to parameterize macro pond drainage 'lambda' is default
 
       real (kind=dbl_kind), public :: &
          dpscale   = 0.001_dbl_kind,& ! alter e-folding time scale for flushing (ktherm=1)
