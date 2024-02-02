@@ -108,7 +108,7 @@
                                         ! freshwater value needed for enthalpy
          depressT  = 0.054_dbl_kind   ,&! Tf:brine salinity ratio (C/ppt)
          viscosity_dyn = 1.79e-3_dbl_kind, & ! dynamic viscosity of brine (kg/m/s)
-         tscale_pnd_drain = c10       ,&! mushy macroscopic drainage timescale (days)
+         tscale_pnd_drain = c1       ,&! mushy macroscopic drainage timescale (days)
          Tocnfrz   = -1.8_dbl_kind    ,&! freezing temp of seawater (C),
                                         ! used as Tsfcn for open water
          Tffresh   = 273.15_dbl_kind  ,&! freezing temp of fresh ice (K)
@@ -330,9 +330,9 @@
       ! level-ice ponds
       character (len=char_len), public :: &
          frzpnd    = 'cesm'        , & ! pond refreezing parameterization
-         pndfrbd   = 'floor'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
-         pndhyps   = 'none'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel' changes aspect ratio based on hi for target sea level pond fraction
-         pndhead   = 'perched'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndfrbd   = 'category'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
+         pndhyps   = 'sealevel'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel' changes aspect ratio based on hi for target sea level pond fraction
+         pndhead   = 'hyps'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
          pndmacr   = 'head'          ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
 
       real (kind=dbl_kind), public :: &
