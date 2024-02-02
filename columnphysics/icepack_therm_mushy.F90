@@ -347,7 +347,8 @@
     endif
 
     ! drain ponds from flushing
-    call flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen, hin)
+    call flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen, hin, & 
+                    nilyr, zTin, phi, hilyr, hsn)
     if (icepack_warnings_aborted(subname)) return
 
     ! flood snow ice
@@ -3318,16 +3319,29 @@
 
 !=======================================================================
 
-  subroutine flush_pond(w, hpond, apnd, dt, flpnd, expnd, alvl, aicen, hin)
+  subroutine flush_pond(w,    hpond,    apnd,     &
+                        dt,   flpnd,    expnd,    &
+                        alvl, aicen,    hin,      &
+                        nilyr,zTin,     phi,      &
+                        hilyr,hsn)
 
     ! given a flushing velocity drain the meltponds
+
+     integer (kind=int_kind), intent(in) :: &
+          nilyr         ! number of ice layers
+
+     real(kind=dbl_kind), dimension(:), intent(in) :: &
+          zTin      , & ! ice layer temperature (C)
+          phi           ! ice layer liquid fraction
 
     real(kind=dbl_kind), intent(in) :: &
          w     , & ! vertical flushing Darcy flow rate (m s-1)
          dt    , & ! time step (s)
          alvl  , & ! level ice fraction
          aicen , & ! category area fraction
-         hin       ! category mean ice thickness
+         hin   , & ! category mean ice thickness
+         hsn   , & ! category mean snow thickness
+         hilyr     ! ice layer thickness (m)
 
     real(kind=dbl_kind), intent(inout) :: &
          apnd  , & ! melt pond area tracer (-)
@@ -3336,10 +3350,16 @@
          expnd     ! exponential pond drainage rate (m/s)
      
     real(kind=dbl_kind) :: &
-         dvn    , & ! change in pond volume per unit grid cell area (m)
-         dhpondn, & ! change in pond depth (m)
-         volpn  , & ! pond volume per unit grid cell area (m)
-         apondn     ! pond area fraction of category
+         dvn        , & ! change in pond volume per unit grid cell area (m)
+         dhpondn    , & ! change in pond depth (m)
+         volpn      , & ! pond volume per unit grid cell area (m)
+         apondn     , & ! pond area fraction of category
+         ice_mass   , & ! mass of ice incl. brine (kg/m2)
+         perm_harm  , & ! harmonic mean of permeability (m2)
+         phi_min    , & ! minimum porosity in the mush
+         hocn       , & ! height of sea level above the base of the ice (m)
+         hpndsf     , & ! height of pond surf. above the base of the ice (m)
+         dhhead         ! pressure head (m)
 
     real(kind=dbl_kind), parameter :: &
          hpond0 = 0.01_dbl_kind
@@ -3395,6 +3415,31 @@
                dhpondn = -lambda_pond * dt * (hpond + hpond0)
           elseif (trim(pndmacr) == 'head') then
                ! drain pond based on the pressure head
+               ! calculate ice mass
+               call ice_mass_perm(nilyr, zTin, phi, hilyr, &
+                                  ice_mass, perm_harm, phi_min)
+               ! calculate ocean surface height above bottom of ice
+               if (trim(pndfrbd) == 'floor') then
+                    ! This is consistent with existing level pond parameterization
+                    ! although note that it's inconsistent with the freeboard calculation
+                    ! only being over the pond floor as is done elsewhere
+                    hocn = (ice_mass + hpond * apnd * rhow + hsn * rhos) / rhow
+               elseif (trim(pndfrbd) == 'category') then
+                    hocn = (ice_mass + hpond * apondn * rhow + hsn * rhos) / rhow
+               else
+                    call icepack_warnings_add(subname//" invalid pndfrbd option" )
+                    call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+                    if (icepack_warnings_aborted(subname)) return
+               endif
+
+               ! pond surface height
+               call pond_head(apondn, hpond, alvl, hin, hpndsf)
+
+               ! pressure head
+               dhhead = max(hpndsf - hocn, c0)
+
+               ! change is fraction of head based on macroscopic time scale
+               dhpondn = - dhhead * dt / (tscale_pnd_drain * 24.0_dbl_kind * 3600.0_dbl_kind)
           else
                call icepack_warnings_add(subname//" invalid pndmacr option" )
                call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
