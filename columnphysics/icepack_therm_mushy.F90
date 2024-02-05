@@ -3397,8 +3397,13 @@
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
                                     aicen, hypso_type, dhpondn, hin)
                flpnd = - dvn / aicen
-          elseif (trim(pndhyps) == 'sealevel') then
-               hypso_type = 'sealevel'
+          elseif (trim(pndhyps) == 'sealevel_lin') then
+               hypso_type = 'sealevel_lin'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                        aicen, hypso_type, dhpondn, hin)
+               flpnd = - dvn / aicen
+          elseif (trim(pndhyps) == 'sealevel_log') then
+               hypso_type = 'sealevel_log'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
                                         aicen, hypso_type, dhpondn, hin)
                flpnd = - dvn / aicen
@@ -3456,8 +3461,13 @@
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
                                         aicen, hypso_type, dhpondn, hin)
                expnd = - dvn / aicen
-          elseif (trim(pndhyps) == 'sealevel') then
-               hypso_type = 'sealevel'
+          elseif (trim(pndhyps) == 'sealevel_lin') then
+               hypso_type = 'sealevel_lin'
+               call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
+                                        aicen, hypso_type, dhpondn, hin)
+               expnd = - dvn / aicen
+          elseif (trim(pndhyps) == 'sealevel_log') then
+               hypso_type = 'sealevel_log'
                call pond_hypsometry(volpn, apondn, hpond, dvn, alvl, & 
                                         aicen, hypso_type, dhpondn, hin)
                expnd = - dvn / aicen

@@ -21,6 +21,10 @@
       use icepack_parameters, only: ktherm, frzpnd, dpscale, hi_min
       use icepack_parameters, only: pndfrbd, pndhyps, pndhead
       use icepack_parameters, only: rhosi, apond_sl
+      use icepack_parameters, only: pnd_L_hi0, pnd_L_c02, pnd_L_c0, pnd_L_c1, pnd_L_c2
+      use icepack_parameters, only: pnd_a0_hi0, pnd_a0_c03, pnd_a0_c02, pnd_a0_c0, pnd_a0_c1
+      use icepack_parameters, only: pnd_y_hi0, pnd_y_c03, pnd_y_c02, pnd_y_c0, pnd_y_c1
+      use icepack_parameters, only: pnd_k, pnd_hi_min
       use icepack_tracers,    only: nilyr
       use icepack_warnings, only: warnstr, icepack_warnings_add
       use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
@@ -220,8 +224,12 @@
                hypso_type = 'aspect_fixed'
                call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
                                     aicen, hypso_type, dhpondn, hi)
-            elseif (trim(pndhyps) == 'sealevel') then
-               hypso_type = 'sealevel'
+            elseif (trim(pndhyps) == 'sealevel_lin') then
+               hypso_type = 'sealevel_lin'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
+                                    aicen, hypso_type, dhpondn, hi)
+            elseif (trim(pndhyps) == 'sealevel_log') then
+               hypso_type = 'sealevel_log'
                call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
                                     aicen, hypso_type, dhpondn, hi)
             else
@@ -261,7 +269,12 @@
                call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
                                     aicen, hypso_type, dhpondn, hi)
                frpndn = - dvn / aicen
-             else
+            elseif (trim(pndhyps) == 'sealevel_log') then
+               hypso_type = 'sealevel_log'
+               call pond_hypsometry(volpn, apondn, hpondn, dvn, alvl_tmp, & 
+                                    aicen, hypso_type, dhpondn, hi)
+               frpndn = - dvn / aicen
+            else
                   call icepack_warnings_add(subname//" invalid pndhyps option" )
                   call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
                   if (icepack_warnings_aborted(subname)) return
@@ -397,7 +410,21 @@
          hpondn      ! pond depth (m)
       
       real (kind=dbl_kind) :: &
-         temp        ! temporary variable for recording changes
+         temp    , & ! temporary variable for recording changes
+         L       , & ! amplitude parameter for logistic hypsometry
+         a0      , & ! location parameter for logistic hypsometry
+         y       , & ! vertical offset parameter for logistic hypsometry
+         Vp      , & ! pond volume per unit area of the category (m)
+         V           ! temporary pond volume per unit area of category (m)
+
+      integer (kind=int_kind) :: &
+         i           ! counter for Newton's method
+      
+      real (kind=dbl_kind), parameter :: &
+         tol = 0.00001_dbl_kind  ! Tolerance for hypsometry
+
+      integer (kind=int_kind), parameter :: &
+         maxi = 100              ! Maximum number of iterations
       
       character(len=*),parameter :: subname='(pond_hypsometry)'
 
@@ -452,7 +479,7 @@
          else ! pond follows aspect ratio
             hpondn = pndaspect * apondn
          endif
-      elseif (trim(type) == 'sealevel') then
+      elseif (trim(type) == 'sealevel_lin') then
          ! update pond volume
          volpn = volpn + dvn
          if (volpn <= c0) then
@@ -460,11 +487,9 @@
             apondn = c0
             hpondn = c0
          endif
-
          ! Compute the pond aspect ratio for sea level ponds
          pndaspect = hin*(rhow - rhosi) / &
                      (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
-
          ! compute the pond area and depth
          apondn = min(alvln, sqrt(volpn/(pndaspect*aicen)))
          if (apondn >= alvln) then ! pond fills all available space
@@ -472,13 +497,210 @@
          else ! pond follows aspect ratio
             hpondn = pndaspect * apondn
          endif
+      elseif (trim(type) == 'sealevel_log') then
+         ! update pond volume
+         volpn = volpn + dvn
+         if (volpn <= c0) then
+            volpn = c0
+            apondn = c0
+            hpondn = c0
+         else
+            ! If the ice is thin enough just use sealevel_lin ponds
+            if (hin < pnd_hi_min) then
+               ! Compute the pond aspect ratio for sea level ponds
+               pndaspect = hin*(rhow - rhosi)/ &
+                           (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+               ! compute the pond area and depth
+               apondn = min(c1, sqrt(volpn/(pndaspect*aicen)))
+               if (apondn >= c1) then ! pond fills all available space
+                  hpondn = volpn/aicen
+               else ! pond follows aspect ratio
+                  hpondn = pndaspect*apondn
+               endif
+            else ! Thick ice, use logistic hypsometry
+               ! Calculate hypsometric parameters
+               L = pond_log_L(hin)
+               a0 = pond_log_a0(hin)
+               y = pond_log_y(hin)
+               Vp = volpn/aicen
+               ! Check if pond will fill entire category
+               if (Vp >= (pond_log_e(c1,L,pnd_k,a0,y) &
+                         - pond_log_inte(c1,L,pnd_k,a0,y))) then
+                  apondn = c1
+                  hpondn = Vp
+               else
+                  ! Use newtons method to solve for apondn
+                  apondn = apond_sl ! initial guess for apondn
+                  V = pond_log_Vp(apondn,L,pnd_k,a0,y)
+                  i = 0
+                  do while ((ABS(V - Vp) > tol) .and. (i <= maxi))
+                     apondn = apondn - V &
+                              /(apondn*pond_log_deda(apondn,L,pnd_k,a0,y))
+                     apondn = max(apondn, c0)
+                     apondn = min(apondn, c1)
+                     V = pond_log_Vp(apondn,L,pnd_k,a0,y)
+                     i = i + 1
+                  enddo
+                  hpondn = V / apondn
+               endif
+            endif ! hin < pnd_hi_min
+         endif ! volpn =< c0
       else
          call icepack_warnings_add(subname//" invalid type option" )
          call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
          if (icepack_warnings_aborted(subname)) return
-      endif
+      endif ! type
 
       end subroutine pond_hypsometry
+
+!=======================================================================
+
+      function pond_log_L(hi) result(L)
+
+         ! Polynomial approximation of L for logistic pond hypsometry
+
+         real(kind=dbl_kind), intent(in) :: &
+            hi    ! ice thickness (m)
+         
+         real(kind=dbl_kind) :: &
+            L     ! amplitude parameter for logistic hypsometry
+
+         character(len=*),parameter :: subname='(pond_log_L)'
+
+         L = pnd_L_c02*(hi - pnd_L_hi0)**(1/2) + pnd_L_c0 + &
+             pnd_L_c1*(hi - pnd_L_hi0) + pnd_L_c2*(hi - pnd_L_hi0)**(2)
+      
+      end function pond_log_L
+
+!=======================================================================
+
+      function pond_log_a0(hi) result(a0)
+
+         ! Polynomial approximation of a0 for logistic pond hypsometry
+
+         real(kind=dbl_kind), intent(in) :: &
+            hi    ! ice thickness (m)
+         
+         real(kind=dbl_kind) :: &
+            a0    ! location parameter for logistic hypsometry
+         
+         character(len=*),parameter :: subname='(pond_log_a0)'
+
+         a0 = pnd_a0_c03*(hi - pnd_a0_hi0)**(1/3) + &
+              pnd_a0_c02*(hi - pnd_a0_hi0)**(1/2) + pnd_a0_c0 + &
+              pnd_a0_c1*(hi - pnd_a0_hi0)
+      
+      end function pond_log_a0
+
+!=======================================================================
+
+      function pond_log_y(hi) result(y)
+
+         ! Polynomial approximation of y for logistic pond hypsometry
+
+         real(kind=dbl_kind), intent(in) :: &
+            hi    ! ice thickness (m)
+         
+         real(kind=dbl_kind) :: &
+            y     ! vertical offset parameter for logistic hypsometry
+
+         character(len=*),parameter :: subname='(pond_log_y)'
+
+         y = pnd_y_c03*(hi - pnd_y_hi0)**(1/3) + &
+             pnd_y_c02*(hi - pnd_y_hi0)**(1/2) + pnd_y_c0 + &
+             pnd_y_c1*(hi - pnd_y_hi0)
+      
+      end function pond_log_y
+
+!=======================================================================
+
+      function pond_log_e(a, L, k, a0, y) result(e)
+
+         ! Logistic hypsometric curve
+
+         real(kind=dbl_kind), intent(in) :: &
+            a, &  ! area fraction
+            L, &  ! amplitude parameter for logistic hypsometry
+            k, &  ! steepness parameter for logistic hypsometry
+            a0, & ! location parameter for logistic hypsometry
+            y     ! vertical offset parameter for logistic hypsometry
+         
+         real(kind=dbl_kind) :: &
+            e     ! elevation above mean ice base on hypsometric curve at a (m)
+
+         character(len=*),parameter :: subname='(pond_log_e)'
+
+         e = L/(1 + EXP(-k*(a-a0))) + y
+      
+      end function pond_log_e
+
+!=======================================================================
+
+      function pond_log_inte(a, L, k, a0, y) result(inte)
+
+         ! Integral of logistic hypsometric curve
+
+         real(kind=dbl_kind), intent(in) :: &
+            a, &  ! area fraction
+            L, &  ! amplitude parameter for logistic hypsometry
+            k, &  ! steepness parameter for logistic hypsometry
+            a0, & ! location parameter for logistic hypsometry
+            y     ! vertical offset parameter for logistic hypsometry
+         
+         real(kind=dbl_kind) :: &
+            inte  ! integral of hypsometric curve at a
+
+         character(len=*),parameter :: subname='(pond_log_inte)'
+
+         inte = L*LOG(EXP(-k*(a - a0)) + 1)/k + (L + y)*a &
+                - L*LOG(EXP(k*a0) + 1)/k
+      
+      end function pond_log_inte
+   
+!=======================================================================
+
+      function pond_log_Vp(a, L, k, a0, y) result(Vp)
+
+         ! Integral of logistic hypsometric curve
+
+         real(kind=dbl_kind), intent(in) :: &
+            a, &  ! area fraction
+            L, &  ! amplitude parameter for logistic hypsometry
+            k, &  ! steepness parameter for logistic hypsometry
+            a0, & ! location parameter for logistic hypsometry
+            y     ! vertical offset parameter for logistic hypsometry
+         
+         real(kind=dbl_kind) :: &
+            Vp    ! pond volume per unit category area (m)
+
+         character(len=*),parameter :: subname='(pond_log_Vp)'
+
+         Vp = a*pond_log_e(a,L,k,a0,y) - pond_log_inte(a,L,k,a0,y)
+      
+      end function pond_log_Vp
+
+!=======================================================================
+
+      function pond_log_deda(a, L, k, a0, y) result(deda)
+
+         ! Derivative of logistic hypsometric curve
+
+         real(kind=dbl_kind), intent(in) :: &
+            a, &  ! area fraction
+            L, &  ! amplitude parameter for logistic hypsometry
+            k, &  ! steepness parameter for logistic hypsometry
+            a0, & ! location parameter for logistic hypsometry
+            y     ! vertical offset parameter for logistic hypsometry
+         
+         real(kind=dbl_kind) :: &
+            deda  ! derivative of logistic hypsometric curve
+
+         character(len=*),parameter :: subname='(pond_log_deda)'
+
+         deda = k*(pond_log_e(a,L,k,a0,y) - y) &
+                *(1 - (pond_log_e(a,L,k,a0,y) - y)/L)
+      
+      end function pond_log_deda
 
 !=======================================================================
 
@@ -494,6 +716,11 @@
 
       real (kind=dbl_kind), intent(out) :: &
          hpsurf   ! height of pond surface above base of the ice (m)
+      
+      real (kind=dbl_kind) :: &
+         L       , & ! amplitude parameter for logistic hypsometry
+         a0      , & ! location parameter for logistic hypsometry
+         y           ! vertical offset parameter for logistic hypsometry
       
       character(len=*),parameter :: subname='(pond_head)'
 
@@ -512,7 +739,7 @@
             else
                hpsurf = hin + hpondn ! ponds cover all available area
             endif
-         elseif (trim(pndhyps) == 'sealevel') then
+         elseif (trim(pndhyps) == 'sealevel_lin') then
             ! Same as fixed aspect ratio but we have to calculate aspect ratio
             pndaspect = hin*(rhow - rhosi) / & 
                         (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
@@ -520,6 +747,27 @@
                hpsurf = hin + 2*hpondn - alvln*pndaspect
             else
                hpsurf = hin + hpondn ! ponds cover all available area
+            endif
+         elseif (trim(pndhyps) == 'sealevel_log') then
+            ! See above, logistic hypsometry
+            if (hin < pnd_hi_min) then
+               ! Same as fixed aspect ratio but we have to calculate aspect ratio
+               pndaspect = hin*(rhow - rhosi) / & 
+                           (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+               if (apondn < alvln) then
+                  hpsurf = hin + 2*hpondn - alvln*pndaspect
+               else
+                  hpsurf = hin + hpondn ! ponds cover all available area
+               endif
+            else ! use logistic hypsomtery
+               if (apondn < c1) then
+                  L = pond_log_L(hin)
+                  a0 = pond_log_a0(hin)
+                  y = pond_log_y(hin)
+                  hpsurf = pond_log_e(apondn,L,pnd_k,a0,y)
+               else
+                  hpsurf = hin + hpondn
+               endif
             endif
          else
             call icepack_warnings_add(subname//" unsupported pndhyps option" )

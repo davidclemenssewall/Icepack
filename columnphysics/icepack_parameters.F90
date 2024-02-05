@@ -108,7 +108,7 @@
                                         ! freshwater value needed for enthalpy
          depressT  = 0.054_dbl_kind   ,&! Tf:brine salinity ratio (C/ppt)
          viscosity_dyn = 1.79e-3_dbl_kind, & ! dynamic viscosity of brine (kg/m/s)
-         tscale_pnd_drain = c1       ,&! mushy macroscopic drainage timescale (days)
+         tscale_pnd_drain = c10       ,&! mushy macroscopic drainage timescale (days)
          Tocnfrz   = -1.8_dbl_kind    ,&! freezing temp of seawater (C),
                                         ! used as Tsfcn for open water
          Tffresh   = 273.15_dbl_kind  ,&! freezing temp of fresh ice (K)
@@ -331,7 +331,7 @@
       character (len=char_len), public :: &
          frzpnd    = 'cesm'        , & ! pond refreezing parameterization
          pndfrbd   = 'category'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
-         pndhyps   = 'sealevel'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel' changes aspect ratio based on hi for target sea level pond fraction
+         pndhyps   = 'sealevel_log'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel_lin' changes aspect ratio based on hi for target sea level pond fraction, 'sealevel_log' uses logistic hypsometry
          pndhead   = 'hyps'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
          pndmacr   = 'head'          ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
 
@@ -341,7 +341,24 @@
          rfracmax  = 0.85_dbl_kind, & ! maximum retained fraction of meltwater
          pndaspect = 0.8_dbl_kind,  & ! ratio of pond depth to area fraction
          hs1       = 0.03_dbl_kind, & ! snow depth for transition to bare pond ice (m)
-         apond_sl  = 0.27_dbl_kind    ! pond area fraction for sea level ponds
+         apond_sl  = 0.28_dbl_kind, & ! pond area fraction for sea level ponds
+         pnd_L_hi0 = -5.49404169_dbl_kind    , & ! coefficient for polynomical approximation of L in logistic pond hypsometry
+         pnd_L_c02 = -0.370928802_dbl_kind   , & ! coefficient for polynomical approximation of L in logistic pond hypsometry
+         pnd_L_c0  = 0.32_dbl_kind           , & ! coefficient for polynomical approximation of L in logistic pond hypsometry
+         pnd_L_c1  = 0.196543722_dbl_kind    , & ! coefficient for polynomical approximation of L in logistic pond hypsometry
+         pnd_L_c2  = 0.000468952279_dbl_kind , & ! coefficient for polynomical approximation of L in logistic pond hypsometry
+         pnd_a0_hi0= 0.22163896_dbl_kind     , & ! coefficient for polynomical approximation of a0 in logistic pond hypsometry
+         pnd_a0_c03= 0.45894314_dbl_kind     , & ! coefficient for polynomical approximation of a0 in logistic pond hypsometry
+         pnd_a0_c02= -0.18807535_dbl_kind    , & ! coefficient for polynomical approximation of a0 in logistic pond hypsometry
+         pnd_a0_c0 = -0.01256743_dbl_kind    , & ! coefficient for polynomical approximation of a0 in logistic pond hypsometry
+         pnd_a0_c1 = 0.0040015_dbl_kind      , & ! coefficient for polynomical approximation of a0 in logistic pond hypsometry
+         pnd_y_hi0 = 0.42490439_dbl_kind     , & ! coefficient for polynomical approximation of y in logistic pond hypsometry
+         pnd_y_c03 = 0.28410056_dbl_kind     , & ! coefficient for polynomical approximation of y in logistic pond hypsometry
+         pnd_y_c02 = -0.16441765_dbl_kind    , & ! coefficient for polynomical approximation of y in logistic pond hypsometry
+         pnd_y_c0  = 0.09242507_dbl_kind     , & ! coefficient for polynomical approximation of y in logistic pond hypsometry
+         pnd_y_c1  = 0.92187485_dbl_kind     , & ! coefficient for polynomical approximation of y in logistic pond hypsometry
+         pnd_k     = 15.0_dbl_kind           , & ! steepness parameter for logistic pond hypsometry
+         pnd_hi_min= 0.6_dbl_kind                ! minimum ice thickness for logistic hypsometry
 
       ! topo ponds
       real (kind=dbl_kind), public :: &
