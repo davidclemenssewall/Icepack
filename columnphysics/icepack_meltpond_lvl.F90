@@ -424,7 +424,7 @@
          tol = 0.00001_dbl_kind  ! Tolerance for hypsometry
 
       integer (kind=int_kind), parameter :: &
-         maxi = 100              ! Maximum number of iterations
+         maxi = 1000              ! Maximum number of iterations
       
       character(len=*),parameter :: subname='(pond_hypsometry)'
 
@@ -545,7 +545,7 @@
                      apondn = c0
                      hpondn = c0
                   else
-                     hpondn = V / apondn
+                     hpondn = Vp / apondn
                   endif
                endif
             endif ! hin < pnd_hi_min
@@ -574,6 +574,7 @@
 
          L = pnd_L_c02*(hi - pnd_L_hi0)**(p5) + pnd_L_c0 + &
              pnd_L_c1*(hi - pnd_L_hi0) + pnd_L_c2*(hi - pnd_L_hi0)**(c2)
+         !L = 0.5945587739592286_dbl_kind
       
       end function pond_log_L
 
@@ -594,6 +595,7 @@
          a0 = pnd_a0_c03*(hi - pnd_a0_hi0)**(p333) + &
               pnd_a0_c02*(hi - pnd_a0_hi0)**(p5) + pnd_a0_c0 + &
               pnd_a0_c1*(hi - pnd_a0_hi0)
+         !a0 = 0.3276430255835446_dbl_kind
       
       end function pond_log_a0
 
@@ -614,6 +616,7 @@
          y = pnd_y_c03*(hi - pnd_y_hi0)**(p333) + &
              pnd_y_c02*(hi - pnd_y_hi0)**(p5) + pnd_y_c0 + &
              pnd_y_c1*(hi - pnd_y_hi0)
+         !y = 2.4914441124365156_dbl_kind
       
       end function pond_log_y
 
