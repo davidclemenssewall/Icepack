@@ -15,7 +15,7 @@
       module icepack_meltpond_lvl
 
       use icepack_kinds
-      use icepack_parameters, only: c0, c1, c2, c10, p01, p5, puny
+      use icepack_parameters, only: c0, c1, c2, c10, p01, p5, puny, p333
       use icepack_parameters, only: viscosity_dyn, rhoi, rhos, rhow, Timelt, Tffresh, Lfresh
       use icepack_parameters, only: gravit, depressT, rhofresh, kice, pndaspect, use_smliq_pnd
       use icepack_parameters, only: ktherm, frzpnd, dpscale, hi_min
@@ -168,7 +168,7 @@
             ! over entire grid cell area. Multiply by (1-rfrac)/rfrac to get
             ! loss over entire area. And divide by aicen to get loss per unit
             ! category area (for consistency with melttn, frpndn, etc)
-            rfpndn = dvn * (1-rfrac) / (rfrac * aicen)
+            rfpndn = dvn * (c1-rfrac) / (rfrac * aicen)
             dvn_temp = dvn
 
             ! shrink pond volume under freezing conditions
@@ -489,7 +489,7 @@
          endif
          ! Compute the pond aspect ratio for sea level ponds
          pndaspect = hin*(rhow - rhosi) / &
-                     (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+                     (rhofresh*apond_sl**c2 - c2*rhow*apond_sl + rhow)
          ! compute the pond area and depth
          apondn = min(alvln, sqrt(volpn/(pndaspect*aicen)))
          if (apondn >= alvln) then ! pond fills all available space
@@ -509,7 +509,7 @@
             if (hin < pnd_hi_min) then
                ! Compute the pond aspect ratio for sea level ponds
                pndaspect = hin*(rhow - rhosi)/ &
-                           (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+                           (rhofresh*apond_sl**c2 - c2*rhow*apond_sl + rhow)
                ! compute the pond area and depth
                apondn = min(c1, sqrt(volpn/(pndaspect*aicen)))
                if (apondn >= c1) then ! pond fills all available space
@@ -541,7 +541,12 @@
                      V = pond_log_Vp(apondn,L,pnd_k,a0,y)
                      i = i + 1
                   enddo
-                  hpondn = V / apondn
+                  if (apondn <= puny) then
+                     apondn = c0
+                     hpondn = c0
+                  else
+                     hpondn = V / apondn
+                  endif
                endif
             endif ! hin < pnd_hi_min
          endif ! volpn =< c0
@@ -567,8 +572,8 @@
 
          character(len=*),parameter :: subname='(pond_log_L)'
 
-         L = pnd_L_c02*(hi - pnd_L_hi0)**(1/2) + pnd_L_c0 + &
-             pnd_L_c1*(hi - pnd_L_hi0) + pnd_L_c2*(hi - pnd_L_hi0)**(2)
+         L = pnd_L_c02*(hi - pnd_L_hi0)**(p5) + pnd_L_c0 + &
+             pnd_L_c1*(hi - pnd_L_hi0) + pnd_L_c2*(hi - pnd_L_hi0)**(c2)
       
       end function pond_log_L
 
@@ -586,8 +591,8 @@
          
          character(len=*),parameter :: subname='(pond_log_a0)'
 
-         a0 = pnd_a0_c03*(hi - pnd_a0_hi0)**(1/3) + &
-              pnd_a0_c02*(hi - pnd_a0_hi0)**(1/2) + pnd_a0_c0 + &
+         a0 = pnd_a0_c03*(hi - pnd_a0_hi0)**(p333) + &
+              pnd_a0_c02*(hi - pnd_a0_hi0)**(p5) + pnd_a0_c0 + &
               pnd_a0_c1*(hi - pnd_a0_hi0)
       
       end function pond_log_a0
@@ -606,8 +611,8 @@
 
          character(len=*),parameter :: subname='(pond_log_y)'
 
-         y = pnd_y_c03*(hi - pnd_y_hi0)**(1/3) + &
-             pnd_y_c02*(hi - pnd_y_hi0)**(1/2) + pnd_y_c0 + &
+         y = pnd_y_c03*(hi - pnd_y_hi0)**(p333) + &
+             pnd_y_c02*(hi - pnd_y_hi0)**(p5) + pnd_y_c0 + &
              pnd_y_c1*(hi - pnd_y_hi0)
       
       end function pond_log_y
@@ -630,7 +635,7 @@
 
          character(len=*),parameter :: subname='(pond_log_e)'
 
-         e = L/(1 + EXP(-k*(a-a0))) + y
+         e = L/(c1 + EXP(-k*(a-a0))) + y
       
       end function pond_log_e
 
@@ -652,8 +657,8 @@
 
          character(len=*),parameter :: subname='(pond_log_inte)'
 
-         inte = L*LOG(EXP(-k*(a - a0)) + 1)/k + (L + y)*a &
-                - L*LOG(EXP(k*a0) + 1)/k
+         inte = L*LOG(EXP(-k*(a - a0)) + c1)/k + (L + y)*a &
+                - L*LOG(EXP(k*a0) + c1)/k
       
       end function pond_log_inte
    
@@ -698,7 +703,7 @@
          character(len=*),parameter :: subname='(pond_log_deda)'
 
          deda = k*(pond_log_e(a,L,k,a0,y) - y) &
-                *(1 - (pond_log_e(a,L,k,a0,y) - y)/L)
+                *(c1 - (pond_log_e(a,L,k,a0,y) - y)/L)
       
       end function pond_log_deda
 
@@ -735,16 +740,16 @@
             ! With these assumptions, we can derive the height of the mean
             ! pond surface above the mean base of the category
             if (apondn < alvln) then
-               hpsurf = hin + 2*hpondn - alvln*pndaspect
+               hpsurf = hin + c2*hpondn - alvln*pndaspect
             else
                hpsurf = hin + hpondn ! ponds cover all available area
             endif
          elseif (trim(pndhyps) == 'sealevel_lin') then
             ! Same as fixed aspect ratio but we have to calculate aspect ratio
             pndaspect = hin*(rhow - rhosi) / & 
-                        (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+                        (rhofresh*apond_sl**c2 - c2*rhow*apond_sl + rhow)
             if (apondn < alvln) then
-               hpsurf = hin + 2*hpondn - alvln*pndaspect
+               hpsurf = hin + c2*hpondn - alvln*pndaspect
             else
                hpsurf = hin + hpondn ! ponds cover all available area
             endif
@@ -753,9 +758,9 @@
             if (hin < pnd_hi_min) then
                ! Same as fixed aspect ratio but we have to calculate aspect ratio
                pndaspect = hin*(rhow - rhosi) / & 
-                           (rhofresh*apond_sl**2 - 2*rhow*apond_sl + rhow)
+                           (rhofresh*apond_sl**c2 - c2*rhow*apond_sl + rhow)
                if (apondn < alvln) then
-                  hpsurf = hin + 2*hpondn - alvln*pndaspect
+                  hpsurf = hin + c2*hpondn - alvln*pndaspect
                else
                   hpsurf = hin + hpondn ! ponds cover all available area
                endif
