@@ -49,7 +49,7 @@
                                           fswsfc,   fswint,   &
                                           Sswabs,   Iswabs,   &
                                           hilyr,    hslyr,    &
-                                          apnd,    hpond,    &
+                                          apnd,     hpond,    &
                                           zqin,     zTin,     &
                                           zqsn,     zTsn,     &
                                           zSin,               &
@@ -91,7 +91,7 @@
     real (kind=dbl_kind), intent(inout) :: &
          hilyr       , & ! ice layer thickness (m)
          hslyr       , & ! snow layer thickness (m)
-         apnd       , &  ! melt pond area fraction tracer
+         apnd        , & ! melt pond area fraction tracer
          hpond           ! melt pond depth (m)
 
     real (kind=dbl_kind), dimension (:), intent(inout) :: &
@@ -3323,7 +3323,7 @@
                         dt,   flpnd,    expnd,    &
                         alvl, aicen,    hin,      &
                         nilyr,zTin,     phi,      &
-                        hilyr,hsn)
+                        hilyr, hsn)
 
     ! given a flushing velocity drain the meltponds
 
