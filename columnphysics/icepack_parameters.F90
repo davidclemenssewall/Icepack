@@ -330,10 +330,10 @@
       ! level-ice ponds
       character (len=char_len), public :: &
          frzpnd    = 'cesm'        , & ! pond refreezing parameterization
-         pndfrbd   = 'category'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
-         pndhyps   = 'sealevel_log'       , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel_lin' changes aspect ratio based on hi for target sea level pond fraction, 'sealevel_log' uses logistic hypsometry
-         pndhead   = 'hyps'        , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
-         pndmacr   = 'head'          ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
+         pndfrbd   = 'floor'       , & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
+         pndhyps   = 'none'        , & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel_lin' changes aspect ratio based on hi for target sea level pond fraction, 'sealevel_log' uses logistic hypsometry
+         pndhead   = 'perched'     , & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndmacr   = 'lambda'          ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
 
       real (kind=dbl_kind), public :: &
          dpscale   = 0.001_dbl_kind,& ! alter e-folding time scale for flushing (ktherm=1)
@@ -487,6 +487,7 @@
          atmbndy_in, calc_strair_in, formdrag_in, highfreq_in, natmiter_in, &
          atmiter_conv_in, calc_dragio_in, &
          tfrz_option_in, kitd_in, kcatbound_in, hs0_in, frzpnd_in, &
+         pndfrbd_in, pndhyps_in, pndhead_in, pndmacr_in, &
          saltflux_option_in, &
          floeshape_in, wave_spec_in, wave_spec_type_in, nfreq_in, &
          dpscale_in, rfracmin_in, rfracmax_in, pndaspect_in, hs1_in, hp1_in, &
@@ -806,7 +807,11 @@
 
       ! level-ice ponds
       character (len=*), intent(in), optional :: &
-         frzpnd_in          ! pond refreezing parameterization
+         frzpnd_in , & ! pond refreezing parameterization
+         pndfrbd_in, & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
+         pndhyps_in, & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel_lin' changes aspect ratio based on hi for target sea level pond fraction, 'sealevel_log' uses logistic hypsometry
+         pndhead_in, & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndmacr_in    ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
 
       real (kind=dbl_kind), intent(in), optional :: &
          dpscale_in, &      ! alter e-folding time scale for flushing
@@ -981,6 +986,10 @@
       if (present(nfreq_in)             ) nfreq            = nfreq_in
       if (present(hs0_in)               ) hs0              = hs0_in
       if (present(frzpnd_in)            ) frzpnd           = frzpnd_in
+      if (present(pndfrbd_in)           ) pndfrbd          = pndfrbd_in
+      if (present(pndhyps_in)           ) pndhyps          = pndhyps_in
+      if (present(pndhead_in)           ) pndhead          = pndhead_in
+      if (present(pndmacr_in)           ) pndmacr          = pndmacr_in
       if (present(dpscale_in)           ) dpscale          = dpscale_in
       if (present(rfracmin_in)          ) rfracmin         = rfracmin_in
       if (present(rfracmax_in)          ) rfracmax         = rfracmax_in
@@ -1214,6 +1223,7 @@
          atmbndy_out, calc_strair_out, formdrag_out, highfreq_out, natmiter_out, &
          atmiter_conv_out, calc_dragio_out, &
          tfrz_option_out, kitd_out, kcatbound_out, hs0_out, frzpnd_out, &
+         pndfrbd_out, pndhyps_out, pndhead_out, pndmacr_out, &
          saltflux_option_out, &
          floeshape_out, wave_spec_out, wave_spec_type_out, nfreq_out, &
          dpscale_out, rfracmin_out, rfracmax_out, pndaspect_out, hs1_out, hp1_out, &
@@ -1544,7 +1554,11 @@
 
       ! level-ice ponds
       character (len=*), intent(out), optional :: &
-         frzpnd_out          ! pond refreezing parameterization
+         frzpnd_out , & ! pond refreezing parameterization
+         pndfrbd_out, & ! domain to apply pond freeboard constraint on 'floor' is default, 'category' assumes category is rigid
+         pndhyps_out, & ! option for pond depth-area changes 'none' is default, 'fixed' assumes a fixed aspect ratio (effectively constant slope) 'sealevel_lin' changes aspect ratio based on hi for target sea level pond fraction, 'sealevel_log' uses logistic hypsometry
+         pndhead_out, & ! how to calculate the pressure head of the pond surface 'perched' is default. 'hyps' assumes elevation based on pndhyps
+         pndmacr_out    ! how to parameterize macro pond drainage 'lambda' is default. if 'head' use pressure head instead of volume
 
       real (kind=dbl_kind), intent(out), optional :: &
          dpscale_out, &      ! alter e-folding time scale for flushing
@@ -1751,6 +1765,10 @@
       if (present(nfreq_out)             ) nfreq_out        = nfreq
       if (present(hs0_out)               ) hs0_out          = hs0
       if (present(frzpnd_out)            ) frzpnd_out       = frzpnd
+      if (present(pndfrbd_out)           ) pndfrbd_out      = pndfrbd
+      if (present(pndhyps_out)           ) pndhyps_out      = pndhyps
+      if (present(pndhead_out)           ) pndhead_out      = pndhead
+      if (present(pndmacr_out)           ) pndmacr_out      = pndmacr
       if (present(dpscale_out)           ) dpscale_out      = dpscale
       if (present(rfracmin_out)          ) rfracmin_out     = rfracmin
       if (present(rfracmax_out)          ) rfracmax_out     = rfracmax
@@ -1958,6 +1976,10 @@
         write(iounit,*) "  nfreq      = ", nfreq
         write(iounit,*) "  hs0        = ", hs0
         write(iounit,*) "  frzpnd     = ", trim(frzpnd)
+        write(iounit,*) "  pndfrbd    = ", trim(pndfrbd)
+        write(iounit,*) "  pndhyps    = ", trim(pndhyps)
+        write(iounit,*) "  pndhead    = ", trim(pndhead)
+        write(iounit,*) "  pndmacr    = ", trim(pndmacr)
         write(iounit,*) "  dpscale    = ", dpscale
         write(iounit,*) "  rfracmin   = ", rfracmin
         write(iounit,*) "  rfracmax   = ", rfracmax
