@@ -113,7 +113,8 @@
       ! Initialize
       !-----------------------------------------------------------------
 
-      volpn = hpnd * aicen * alvl * apnd
+      ! DCS volpn = hpnd * aicen * alvl * apnd
+      volpn = hpnd * alvl * apnd
       ffrac = c0
 
       !-----------------------------------------------------------------
@@ -149,17 +150,20 @@
             ! add melt water
             if (use_smliq_pnd) then
                dvn = rfrac/rhofresh*(meltt*rhoi &
-                   +                 meltsliqn)*aicen
+                   ! DCS +                 meltsliqn)*aicen
+                     + meltsliqn)
             else
                dvn = rfrac/rhofresh*(meltt*rhoi &
                    +                 melts*rhos &
-                   +                 frain*  dt)*aicen
+                   ! DCS +                 frain*  dt)*aicen
+                   + frain * dt)
             endif
             ! Track lost meltwater dvn is volume of meltwater (m3/m2) captured
             ! over entire grid cell area. Multiply by (1-rfrac)/rfrac to get
             ! loss over entire area. And divide by aicen to get loss per unit
             ! category area (for consistency with melttn, frpndn, etc)
-            rfpndn = dvn * (c1-rfrac) / (rfrac * aicen)
+            ! DCS rfpndn = dvn * (c1-rfrac) / (rfrac * aicen)
+            rfpndn = dvn * (c1-rfrac) / rfrac
             dvn_temp = dvn
 
             ! shrink pond volume under freezing conditions
@@ -195,14 +199,16 @@
                           ffrac = min(-dhlid*rhoi*Lfresh/(dt*fsurfn), c1)
                   endif
                endif
-               alid = apondn * aicen
+               ! DCS alid = apondn * aicen
+               alid = apondn
                dvn = dvn - dhlid*alid*rhoi/rhofresh
             endif
 
             volpn = volpn + dvn
             ! Track lost/gained meltwater per unit category area from pond 
             ! lid freezing/melting. Note sign flip relative to dvn convention
-            ilpndn = (dvn_temp - dvn) / aicen
+            ! DCS ilpndn = (dvn_temp - dvn) / aicen
+            ilpndn = dvn_temp - dvn
 
             !-----------------------------------------------------------
             ! update pond area and depth
@@ -214,13 +220,16 @@
 
             if (apondn*aicen > puny) then ! existing ponds
                apondn = max(c0, min(alvl_tmp, &
-                    apondn + 0.5*dvn/(pndaspect*apondn*aicen)))
+                    ! DCS apondn + 0.5*dvn/(pndaspect*apondn*aicen)))
+                     apondn + 0.5*dvn/(pndaspect*apondn)))
                hpondn = c0
                if (apondn > puny) &
-                    hpondn = volpn/(apondn*aicen)
+                    ! DCS hpondn = volpn/(apondn*aicen)
+                     hpondn = volpn/apondn
 
             elseif (alvl_tmp*aicen > c10*puny) then ! new ponds
-               apondn = min (sqrt(volpn/(pndaspect*aicen)), alvl_tmp)
+               ! DCS apondn = min (sqrt(volpn/(pndaspect*aicen)), alvl_tmp)
+               apondn = min (sqrt(volpn/pndaspect), alvl_tmp)
                hpondn = pndaspect * apondn ! Possible loss of meltwater if apondn == alvl_tmp
 
             else           ! melt water runs off deformed ice
@@ -241,7 +250,7 @@
             frpndn = (hpond_tmp - hpondn) * apondn
 
             ! fraction of grid cell covered by ponds
-            apondn = apondn * aicen
+            ! DCS apondn = apondn * aicen
 
             volpn = hpondn*apondn
             ! note, this implies that if ponds fully drain or freeze their
@@ -272,7 +281,8 @@
                dvn = -deltah*apondn
                volpn = volpn + dvn
                apondn = max(c0, min(apondn &
-                    + 0.5*dvn/(pndaspect*apondn), alvl_tmp*aicen))
+                    ! DCS + 0.5*dvn/(pndaspect*apondn), alvl_tmp*aicen))
+                     + 0.5*dvn/(pndaspect*apondn), alvl_tmp))
                hpondn = c0
                if (apondn > puny) hpondn = volpn/apondn
             endif
@@ -284,7 +294,8 @@
          !-----------------------------------------------------------
 
          hpnd = hpondn
-         apnd = apondn / (aicen*alvl_tmp)
+         ! DCS apnd = apondn / (aicen*alvl_tmp)
+         apnd = apondn / alvl_tmp
          if (trim(frzpnd) == 'hlid') ipnd = hlid
 
       endif
