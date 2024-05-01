@@ -282,9 +282,9 @@
                volpn = volpn + dvn
                apondn = max(c0, min(apondn &
                     ! DCS + 0.5*dvn/(pndaspect*apondn), alvl_tmp*aicen))
-                     + 0.5*dvn/(pndaspect*apondn), alvl_tmp))
+                     + 0.5*dvn/(pndaspect*apondn*aicen), alvl_tmp))
                hpondn = c0
-               if (apondn > puny) hpondn = volpn/apondn
+               if (apondn*aicen > puny) hpondn = volpn/apondn
             endif
 
          endif
