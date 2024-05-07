@@ -19,6 +19,7 @@
       use icepack_parameters, only: viscosity_dyn, rhoi, rhos, rhow, Timelt, Tffresh, Lfresh
       use icepack_parameters, only: gravit, depressT, rhofresh, kice, pndaspect, use_smliq_pnd
       use icepack_parameters, only: ktherm, frzpnd, dpscale, hi_min
+      use icepack_parameters, only: pndhyps, pndfrbd, pndhead
       use icepack_tracers,    only: nilyr
       use icepack_warnings, only: warnstr, icepack_warnings_add
       use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
@@ -26,7 +27,7 @@
       implicit none
 
       private
-      public :: compute_ponds_lvl
+      public :: compute_ponds_lvl, pond_hypsometry, pond_head
 
 !=======================================================================
 
@@ -42,7 +43,8 @@
                                    qicen,  sicen,        &
                                    Tsfcn,  alvl,         &
                                    apnd,   hpnd,  ipnd,  &
-                                   meltsliqn)
+                                   meltsliqn, frpndn,    &
+                                   rfpndn, ilpndn)
 
       real (kind=dbl_kind), intent(in) :: &
          dt          ! time step (s)
@@ -62,7 +64,10 @@
          meltsliqn   ! liquid contribution to meltponds in dt (kg/m^2)
 
       real (kind=dbl_kind), intent(inout) :: &
-         apnd, hpnd, ipnd
+         apnd, hpnd, ipnd, &
+         frpndn, &   ! pond drainage rate due to freeboard constraint (m/step)
+         rfpndn, &   ! runoff rate due to rfrac (m/step)
+         ilpndn      ! pond loss/gain due to ice lid (m/step)
 
       real (kind=dbl_kind), dimension (:), intent(in) :: &
          qicen, &  ! ice layer enthalpy (J m-3)
@@ -77,7 +82,8 @@
       ! local temporary variables
 
       real (kind=dbl_kind) :: &
-         volpn     ! pond volume per unit area (m)
+         dhpond, &    ! change in hpond (m)
+         dvn_temp     ! local variable for change in volume due to rfrac
 
       real (kind=dbl_kind), dimension (nilyr) :: &
          Tmlt      ! melting temperature (C)
@@ -90,8 +96,9 @@
          Ts                     , & ! surface air temperature (C)
          apondn                 , & ! local pond area
          hpondn                 , & ! local pond depth (m)
-         dvn                    , & ! change in pond volume (m)
-         hlid, alid             , & ! refrozen lid thickness, area
+         vpondn                 , & ! pond volume per category area (m)
+         dvpondn                , & ! change in pond volume per category area (m)
+         hlid                   , & ! refrozen lid thickness
          dhlid                  , & ! change in refrozen lid thickness
          bdt                    , & ! 2 kice dT dt / (rhoi Lfresh)
          alvl_tmp               , & ! level ice fraction of ice area
@@ -107,7 +114,7 @@
       ! Initialize
       !-----------------------------------------------------------------
 
-      volpn = hpnd * aicen * alvl * apnd
+      vpondn = hpnd * alvl * apnd
       ffrac = c0
 
       !-----------------------------------------------------------------
@@ -127,7 +134,7 @@
             !--------------------------------------------------------------
             apondn = c0
             hpondn = c0
-            volpn  = c0
+            vpondn = c0
             hlid = c0
 
          else
@@ -141,27 +148,31 @@
             ! update pond volume
             !-----------------------------------------------------------
             ! add melt water
+            ! note melt from deformed area is routed onto level area
             if (use_smliq_pnd) then
-               dvn = rfrac/rhofresh*(meltt*rhoi &
-                   +                 meltsliqn)*aicen
+               dvpondn = rfrac/rhofresh*(meltt*rhoi + meltsliqn)
             else
-               dvn = rfrac/rhofresh*(meltt*rhoi &
-                   +                 melts*rhos &
-                   +                 frain*  dt)*aicen
+               dvpondn = rfrac/rhofresh*(meltt*rhoi + melts*rhos + frain*dt)
             endif
+            ! Track lost meltwater dvn is volume of meltwater (m3/m2) captured
+            ! over entire grid cell area. Multiply by (1-rfrac)/rfrac to get
+            ! loss over entire area. And divide by aicen to get loss per unit
+            ! category area (for consistency with melttn, frpndn, etc)
+            rfpndn = dvpondn * (c1-rfrac) / rfrac
+            dvn_temp = dvpondn
 
             ! shrink pond volume under freezing conditions
             if (trim(frzpnd) == 'cesm') then
                Tp = Timelt - Td
                dTs = max(Tp - Tsfcn,c0)
-               dvn = dvn - volpn * (c1 - exp(rexp*dTs/Tp))
+               dvpondn = dvpondn - vpondn * (c1 - exp(rexp*dTs/Tp))
 
             else
                ! trim(frzpnd) == 'hlid' Stefan approximation
                ! assumes pond is fresh (freezing temperature = 0 C)
                ! and ice grows from existing pond ice
                hlid = ipnd
-               if (dvn == c0) then ! freeze pond
+               if (dvpondn == c0) then ! freeze pond
                   Ts = Tair - Tffresh
                   if (Ts < c0) then
                      ! if (Ts < -c2) then ! as in meltpond_cesm
@@ -183,46 +194,42 @@
                           ffrac = min(-dhlid*rhoi*Lfresh/(dt*fsurfn), c1)
                   endif
                endif
-               alid = apondn * aicen
-               dvn = dvn - dhlid*alid*rhoi/rhofresh
+               dvpondn = dvpondn - dhlid*apondn*rhoi/rhofresh
             endif
 
-            volpn = volpn + dvn
-
+            ! Track lost/gained meltwater per unit category area from pond 
+            ! lid freezing/melting. Note sign flip relative to dvn convention
+            ilpndn = dvn_temp - dvpondn
+            
             !-----------------------------------------------------------
             ! update pond area and depth
             !-----------------------------------------------------------
-            if (volpn <= c0) then
-               volpn = c0
-               apondn = c0
-            endif
-
-            if (apondn*aicen > puny) then ! existing ponds
-               apondn = max(c0, min(alvl_tmp, &
-                    apondn + 0.5*dvn/(pndaspect*apondn*aicen)))
-               hpondn = c0
-               if (apondn > puny) &
-                    hpondn = volpn/(apondn*aicen)
-
-            elseif (alvl_tmp*aicen > c10*puny) then ! new ponds
-               apondn = min (sqrt(volpn/(pndaspect*aicen)), alvl_tmp)
-               hpondn = pndaspect * apondn
-
-            else           ! melt water runs off deformed ice
-               apondn = c0
-               hpondn = c0
-            endif
-            apondn = max(apondn, c0)
+            call pond_hypsometry(hpond=hpondn, apond=apondn, vpond=vpondn, &
+                                 dvpond=dvpondn, aicen=aicen, alvl=alvl_tmp)
 
             ! limit pond depth to maintain nonnegative freeboard
-            hpondn = min(hpondn, ((rhow-rhoi)*hi - rhos*hs)/rhofresh)
-
-            ! fraction of grid cell covered by ponds
-            apondn = apondn * aicen
-
-            volpn = hpondn*apondn
-            if (volpn <= c0) then
-               volpn = c0
+            if (trim(pndfrbd) == 'floor') then
+               dhpond = min(((rhow-rhoi)*hi - rhos*hs)/rhofresh - hpondn, c0)
+            elseif (trim(pndfrbd) == 'category') then
+               dhpond = min(((rhow-rhoi)*hi-rhos*hs)/(rhofresh*apondn)-hpondn,&
+                            c0)
+            else
+               call icepack_warnings_add(subname//" invalid pndfrbd option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+            endif
+            ! at this point apondn is the fraction of the entire category 
+            ! (level + deformed) with ponds on it
+            frpndn = - dhpond * apondn
+            call pond_hypsometry(hpond=hpondn, apond=apondn, dhpond=dhpond, &
+                                 alvl=alvl_tmp)
+            
+            
+            vpondn = hpondn*apondn
+            ! note, this implies that if ponds fully drain or freeze their
+            ! depressions cease to exist and the lid ice also ceases to exist
+            if (vpondn <= c0) then
+               vpondn = c0
                apondn = c0
                hpondn = c0
                hlid = c0
@@ -244,12 +251,12 @@
                if (icepack_warnings_aborted(subname)) return
                drain = perm*pressure_head*dt / (viscosity_dyn*hi) * dpscale
                deltah = min(drain, hpondn)
-               dvn = -deltah*apondn
-               volpn = volpn + dvn
+               dvpondn = -deltah*apondn
+               vpondn = vpondn + dvpondn
                apondn = max(c0, min(apondn &
-                    + 0.5*dvn/(pndaspect*apondn), alvl_tmp*aicen))
+                    + 0.5*dvpondn/(pndaspect*apondn), alvl_tmp))
                hpondn = c0
-               if (apondn > puny) hpondn = volpn/apondn
+               if (apondn > puny) hpondn = vpondn/apondn
             endif
 
          endif
@@ -259,7 +266,7 @@
          !-----------------------------------------------------------
 
          hpnd = hpondn
-         apnd = apondn / (aicen*alvl_tmp)
+         apnd = apondn / alvl_tmp
          if (trim(frzpnd) == 'hlid') ipnd = hlid
 
       endif
@@ -322,6 +329,180 @@
       end subroutine brine_permeability
 
 !=======================================================================
+
+! compute the changes in pond area and depth
+
+      subroutine pond_hypsometry(hpond, apond, vpond, dhpond, dvpond, aicen, alvl)
+
+      real (kind=dbl_kind), intent(inout) :: &
+         hpond     ! pond depth tracer
+      
+      real (kind=dbl_kind), intent(inout), optional :: &
+         apond, &  ! pond fractional area of category (apnd*alvl for lvl ponds)
+         vpond     ! pond volume per unit category area (apnd*alvl*hpnd)  
+
+      real (kind=dbl_kind), intent(in), optional :: &
+         dhpond, & ! incoming change in pond depth (may be converted to dv)
+         dvpond, & ! incoming change in pond volume per unit category area
+         aicen, &  ! category fractional area
+         alvl      ! category fraction level ice
+      
+      ! local variables
+      
+      real (kind=dbl_kind) :: &
+         dv, &     ! local variable for change in pond volume
+         vp        ! local variable for pond volume per unit category area
+      
+      character(len=*),parameter :: subname='(pond_hypsometry)'
+
+      ! Behavior is undefined if dhpond and dvpond are both present
+      if (present(dhpond) .and. present(dvpond)) then
+         call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+         call icepack_warnings_add(subname//" dhpond and dvpond cannot both be input" )
+         return
+      endif
+      ! or both absent
+      if ((.not. present(dhpond)) .and. (.not. present(dvpond))) then
+         call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+         call icepack_warnings_add(subname//" dhpond and dvpond cannot both be absent" )
+         return
+      endif
+
+      if (trim(pndhyps) == 'none') then
+         if (present(dhpond)) then ! simply change hpond by dhpond
+            hpond = hpond + dhpond
+         else ! dvpond must be present (due to input checking above)
+            ! Check that apond is present
+            if (.not. present(apond)) then
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               call icepack_warnings_add(subname//" apond must be present if we are modifying apond" )
+               return
+            endif
+            if ((.not. present(aicen)) .or. (.not. present(alvl))) then
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               call icepack_warnings_add(subname//" missing aicen and/or alvl")
+               return
+            endif
+            vpond = vpond + dvpond
+            if (vpond <= c0) then
+               vpond = c0
+               apond = c0
+            endif
+
+            if (apond*aicen > puny) then ! existing ponds
+               apond = max(c0, min(alvl, &
+                    apond + 0.5*dvpond/(pndaspect*apond)))
+               hpond = c0
+               if (apond > puny) &
+                  hpond = vpond/apond
+
+            elseif (alvl*aicen > c10*puny) then ! new ponds
+               apond = min (sqrt(vpond/pndaspect), alvl)
+               hpond = pndaspect * apond ! Possible loss of meltwater if apondn == alvl_tmp
+
+            else           ! melt water runs off deformed ice
+               apond = c0
+               hpond = c0 ! Loss of meltwater for very deformed ice
+            endif
+            apond = max(apond, c0)
+         endif
+      elseif (trim(pndhyps) == 'fixed') then
+         if (.not. present(apond)) then
+            call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+            call icepack_warnings_add(subname//" apond must be present if we are modifying apond" )
+            return
+         endif
+         if (.not. present(alvl)) then
+            call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+            call icepack_warnings_add(subname//" missing alvl")
+            return
+         endif
+         ! Get the change in volume
+         if (present(dvpond)) then
+            dv = dvpond
+         else ! compute change in volume from change in depth
+            dv = dhpond * apond
+         endif
+         if (present(vpond)) then
+            vp = vpond
+            vpond = max(vpond + dv, c0)
+         else ! compute initial pond volume from area and depth
+            vp = apond * hpond
+         endif
+         vp = vp + dv ! update pond volume
+         ! Compute pond area assuming that apond*pndaspect = hpond
+         if (vp <= puny) then
+            apond = c0
+            hpond = c0
+         else
+            apond = min(sqrt(vp/pndaspect), alvl)
+            ! preserve pond volume if pond fills all available level area
+            hpond = c0
+            if (apond < alvl) then
+               hpond = apond * pndaspect
+            else
+               hpond = vp/apond
+            endif
+         endif
+      endif
+      
+      end subroutine pond_hypsometry
+
+!=======================================================================
+
+      subroutine pond_head(apond, hpond, hin, hpsurf, alvl)
+
+         real (kind=dbl_kind), intent(in) :: &
+            hin     , & ! category mean ice thickness
+            apond   , & ! pond area fraction of the category (incl. deformed)
+            hpond       ! mean pond depth (m)
+
+         real (kind=dbl_kind), intent(in), optional :: &
+            alvl        ! level ice fraction of category area
+   
+         real (kind=dbl_kind), intent(out) :: &
+            hpsurf   ! height of pond surface above base of the ice (m)
+
+         real (kind=dbl_kind) :: &
+            alvl_tmp    ! local variable for alvl
+         
+         character(len=*),parameter :: subname='(pond_head)'
+
+         ! Check whether alvl was given, set to 1 if not
+         if (present(alvl)) then
+            alvl_tmp = alvl
+         else
+            alvl_tmp = c1
+         endif
+   
+         if (trim(pndhead) == 'perched') then
+            hpsurf = hin + hpond
+         elseif (trim(pndhead) == 'hyps') then
+            if (trim(pndhyps) == 'fixed') then
+               ! Applying a fixed aspect ratio to the ponds implicitly assumes
+               ! that the hypsometric curve has a constant slope of double the
+               ! aspect ratio if ponds occupy lowest elevations first. We'll 
+               ! assume that the deformed ice in the 
+               ! category occupies the upper end of the hypsometry.
+               ! With these assumptions, we can derive the height of the mean
+               ! pond surface above the mean base of the category
+               if (apond < (alvl_tmp - puny)) then
+                  hpsurf = hin - pndaspect + c2*pndaspect*apond
+               else ! ponds cover all available area
+                  hpsurf = hin + hpond - pndaspect*(c1 - alvl_tmp)
+               endif
+            else
+               call icepack_warnings_add(subname//" unsupported pndhyps option" )
+               call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+               if (icepack_warnings_aborted(subname)) return
+            endif
+         else
+            call icepack_warnings_add(subname//" invalid pndhead option" )
+            call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+            if (icepack_warnings_aborted(subname)) return
+         endif
+   
+      end subroutine pond_head
 
       end module icepack_meltpond_lvl
 
