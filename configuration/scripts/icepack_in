@@ -24,6 +24,16 @@
     hs_itd_nc3     = 0.250
     hs_itd_nc4     = 0.250
     hs_itd_nc5     = 0.250
+    ap_itd_nc1     = 0.0
+    ap_itd_nc2     = 0.0
+    ap_itd_nc3     = 0.0
+    ap_itd_nc4     = 0.0
+    ap_itd_nc5     = 0.0
+    hp_itd_nc1     = 0.0
+    hp_itd_nc2     = 0.0
+    hp_itd_nc3     = 0.0
+    hp_itd_nc4     = 0.0
+    hp_itd_nc5     = 0.0
     sst_init       = -1.8
     restart        = .false.
     restart_dir    = './restart/'
