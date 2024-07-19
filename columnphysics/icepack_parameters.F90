@@ -233,6 +233,11 @@
       real (kind=dbl_kind), public :: &
          hpmin  = 0.005_dbl_kind, & ! minimum allowed melt pond depth (m)
          hp0    = 0.200_dbl_kind    ! pond depth below which transition to bare ice
+      
+      ! Parameters that directly control the visible scattering coefficient of ponded ice
+      real (kind=dbl_kind), public :: &
+         ki_p_ssl_mn_vis = 70.2_dbl_kind, & ! visible extinction coefficient of pond ssl
+         ki_p_int_mn_vis = 20.2_dbl_kind    ! visible extinction co. of ponded ice interior
 
 !-----------------------------------------------------------------------
 ! Parameters for dynamics, including ridging and strength
@@ -466,7 +471,7 @@
          phi_i_mushy_in, shortwave_in, albedo_type_in, albsnowi_in, &
          albicev_in, albicei_in, albsnowv_in, &
          ahmax_in, R_ice_in, R_pnd_in, R_snw_in, dT_mlt_in, rsnw_mlt_in, &
-         hpmin_in, hp0_in, &
+         hpmin_in, hp0_in, ki_p_ssl_mn_vis_in, ki_p_int_mn_vis_in,&
          kalg_in, kstrength_in, krdg_partic_in, krdg_redist_in, mu_rdg_in, &
          atmbndy_in, calc_strair_in, formdrag_in, highfreq_in, natmiter_in, &
          atmiter_conv_in, calc_dragio_in, &
@@ -628,6 +633,8 @@
          R_snw_in    , & ! snow tuning parameter; +1 > ~.01 change in broadband albedo
          hpmin_in    , & ! minimum allowed melt pond depth (m)
          hp0_in      , & ! pond depth below which transition to bare ice
+         ki_p_ssl_mn_vis_in, & ! visible extinction coefficient of pond ssl
+         ki_p_int_mn_vis_in, & ! visible extinction co. of ponded ice interior
          dT_mlt_in   , & ! change in temp for non-melt to melt snow grain
                          ! radius change (C)
          rsnw_mlt_in , & ! maximum melting snow grain radius (10^-6 m)
@@ -946,6 +953,8 @@
       if (present(R_snw_in)             ) R_snw            = R_snw_in
       if (present(hpmin_in)             ) hpmin            = hpmin_in
       if (present(hp0_in)               ) hp0              = hp0_in
+      if (present(ki_p_ssl_mn_vis_in)   ) ki_p_ssl_mn_vis  = ki_p_ssl_mn_vis_in
+      if (present(ki_p_int_mn_vis_in)   ) ki_p_int_mn_vis  = ki_p_int_mn_vis_in
       if (present(dT_mlt_in)            ) dT_mlt           = dT_mlt_in
       if (present(rsnw_mlt_in)          ) rsnw_mlt         = rsnw_mlt_in
       if (present(kalg_in)              ) kalg             = kalg_in
@@ -1198,7 +1207,7 @@
          albedo_type_out, albicev_out, albicei_out, albsnowv_out, &
          albsnowi_out, ahmax_out, R_ice_out, R_pnd_out, R_snw_out, dT_mlt_out, &
          rsnw_mlt_out, dEdd_algae_out, &
-         hpmin_out, hp0_out, &
+         hpmin_out, hp0_out, ki_p_ssl_mn_vis_out, ki_p_int_mn_vis_out,&
          kalg_out, kstrength_out, krdg_partic_out, krdg_redist_out, mu_rdg_out, &
          atmbndy_out, calc_strair_out, formdrag_out, highfreq_out, natmiter_out, &
          atmiter_conv_out, calc_dragio_out, &
@@ -1371,6 +1380,8 @@
          R_snw_out    , & ! snow tuning parameter; +1 > ~.01 change in broadband albedo
          hpmin_out    , & ! minimum allowed melt pond depth (m)
          hp0_out      , & ! pond depth below which transition to bare ice
+         ki_p_ssl_mn_vis_out, & ! visible extinction coefficient of pond ssl
+         ki_p_int_mn_vis_out, & ! visible extinction co. of ponded ice interior
          dT_mlt_out   , & ! change in temp for non-melt to melt snow grain
                           ! radius change (C)
          rsnw_mlt_out , & ! maximum melting snow grain radius (10^-6 m)
@@ -1721,6 +1732,8 @@
       if (present(R_snw_out)             ) R_snw_out        = R_snw
       if (present(hpmin_out)             ) hpmin_out        = hpmin
       if (present(hp0_out)               ) hp0_out          = hp0
+      if (present(ki_p_ssl_mn_vis_out)   ) ki_p_ssl_mn_vis_out = ki_p_ssl_mn_vis
+      if (present(ki_p_int_mn_vis_out)   ) ki_p_int_mn_vis_out = ki_p_int_mn_vis
       if (present(dT_mlt_out)            ) dT_mlt_out       = dT_mlt
       if (present(rsnw_mlt_out)          ) rsnw_mlt_out     = rsnw_mlt
       if (present(kalg_out)              ) kalg_out         = kalg
@@ -1930,6 +1943,8 @@
         write(iounit,*) "  R_snw      = ", R_snw
         write(iounit,*) "  hpmin      = ", hpmin
         write(iounit,*) "  hp0        = ", hp0
+        write(iounit,*) "  ki_p_ssl_mn_vis = ", ki_p_ssl_mn_vis
+        write(iounit,*) "  ki_p_int_mn_vis = ", ki_p_int_mn_vis
         write(iounit,*) "  dT_mlt     = ", dT_mlt
         write(iounit,*) "  rsnw_mlt   = ", rsnw_mlt
         write(iounit,*) "  kalg       = ", kalg

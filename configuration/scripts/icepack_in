@@ -65,6 +65,8 @@
     R_snw           = 1.5
     hpmin           = 0.005d0
     hp0             = 0.2d0
+    ki_p_ssl_mn_vis = 70.2d0
+    ki_p_int_mn_vis = 20.2d0
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.6

@@ -5,6 +5,7 @@
       use icepack_warnings, only: warnstr, icepack_warnings_add
       use icepack_warnings, only: icepack_warnings_setabort, icepack_warnings_aborted
       use icepack_parameters, only: c0
+      use icepack_parameters, only: ki_p_ssl_mn_vis, ki_p_int_mn_vis
       use icepack_tracers, only: nmodal1, nmodal2, max_aero
 
       implicit none
@@ -247,12 +248,12 @@
       gi_int_mn_3bd = (/ .94_dbl_kind,    .94_dbl_kind,     .94_dbl_kind /)
 
       ! ponded ice surface scattering layer (ssl) iops
-      ki_p_ssl_mn = (/ 70.2_dbl_kind,  77.7_dbl_kind,  1309._dbl_kind/)
+      ki_p_ssl_mn = (/ ki_p_ssl_mn_vis,  77.7_dbl_kind,  1309._dbl_kind/)
       wi_p_ssl_mn = (/ .9972_dbl_kind, .9009_dbl_kind, .0305_dbl_kind/)
       gi_p_ssl_mn = (/ .94_dbl_kind,   .94_dbl_kind,   .94_dbl_kind  /)
 
       ! ponded ice interior layer (int) iops
-      ki_p_int_mn = (/  20.2_dbl_kind,  27.7_dbl_kind, 1445._dbl_kind/)
+      ki_p_int_mn = (/  ki_p_int_mn_vis,  27.7_dbl_kind, 1445._dbl_kind/)
       wi_p_int_mn = (/ .9901_dbl_kind, .7223_dbl_kind, .0277_dbl_kind/)
       gi_p_int_mn = (/ .94_dbl_kind,   .94_dbl_kind,   .94_dbl_kind  /)
 
