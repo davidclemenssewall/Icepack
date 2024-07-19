@@ -262,6 +262,8 @@ shortwave_nml
    "``R_ice``", "real", "tuning parameter for sea ice albedo from Delta-Eddington shortwave", "0.0"
    "``R_pnd``", "real", "tuning parameter for ponded sea ice albedo from Delta-Eddington shortwave", "0.0"
    "``R_snw``", "real", "tuning parameter for snow (broadband albedo) from Delta-Eddington shortwave", "1.5"
+   "``hpmin``", "real", "minimum allowed melt pond depth (m) for shortwave", "0.005"
+   "``hp0``", "real", "pond depth (m) below which transition to bare ice", "0.2"
    "``shortwave``", "``ccsm3``", "NCAR CCSM3 shortwave distribution method", "``dEdd``"
    "", "``dEdd``", "Delta-Eddington method (3-band)", ""
    "", "``dEdd_snicar_ad``", "Delta-Eddington method with 5-band snow", ""

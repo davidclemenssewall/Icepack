@@ -63,6 +63,8 @@
     R_ice           = 0.
     R_pnd           = 0.
     R_snw           = 1.5
+    hpmin           = 0.005d0
+    hp0             = 0.2d0
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.6

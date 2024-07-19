@@ -89,6 +89,7 @@
 
       real (kind=dbl_kind) :: ustar_min, albicev, albicei, albsnowv, albsnowi, &
          ahmax, R_ice, R_pnd, R_snw, dT_mlt, rsnw_mlt, ksno, hi_min, Tliquidus_max, &
+         hpmin, hp0, &
          mu_rdg, hs0, dpscale, rfracmin, rfracmax, pndaspect, hs1, hp1, &
          a_rapid_mode, Rac_rapid_mode, aspect_rapid_mode, dSdt_slow_mode, &
          phi_c_slow_mode, phi_i_mushy, kalg, emissivity, floediam, hfrazilmin, &
@@ -157,6 +158,7 @@
         shortwave,      albedo_type,                                    &
         albicev,        albicei,         albsnowv,      albsnowi,       &
         ahmax,          R_ice,           R_pnd,         R_snw,          &
+        hpmin,          hp0,                                            &
         sw_redist,      sw_frac,         sw_dtemp,                      &
         dT_mlt,         rsnw_mlt,        kalg,          snw_ssp_table
 
@@ -207,6 +209,7 @@
            atmiter_conv_out = atmiter_conv, calc_dragio_out=calc_dragio, &
            albedo_type_out=albedo_type, R_ice_out=R_ice, R_pnd_out=R_pnd, &
            R_snw_out=R_snw, dT_mlt_out=dT_mlt, rsnw_mlt_out=rsnw_mlt, &
+           hpmin_out=hpmin, hp0_out=hp0, &
            kstrength_out=kstrength, krdg_partic_out=krdg_partic, &
            krdg_redist_out=krdg_redist, mu_rdg_out=mu_rdg, &
            atmbndy_out=atmbndy, calc_strair_out=calc_strair, &
@@ -695,6 +698,8 @@
          write(nu_diag,1000) ' R_ice                     = ', R_ice
          write(nu_diag,1000) ' R_pnd                     = ', R_pnd
          write(nu_diag,1000) ' R_snw                     = ', R_snw
+         write(nu_diag,1000) ' hpmin                     = ', hpmin
+         write(nu_diag,1000) ' hp0                       = ', hp0
          write(nu_diag,1000) ' dT_mlt                    = ', dT_mlt
          write(nu_diag,1000) ' rsnw_mlt                  = ', rsnw_mlt
          write(nu_diag,1000) ' kalg                      = ', kalg
@@ -961,6 +966,7 @@
            atmiter_conv_in = atmiter_conv, calc_dragio_in=calc_dragio, &
            albedo_type_in=albedo_type, R_ice_in=R_ice, R_pnd_in=R_pnd, &
            R_snw_in=R_snw, dT_mlt_in=dT_mlt, rsnw_mlt_in=rsnw_mlt, &
+           hpmin_in=hpmin, hp0_in=hp0, &
            kstrength_in=kstrength, krdg_partic_in=krdg_partic, &
            krdg_redist_in=krdg_redist, mu_rdg_in=mu_rdg, &
            atmbndy_in=atmbndy, calc_strair_in=calc_strair, &

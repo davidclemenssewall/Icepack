@@ -53,6 +53,7 @@
       use icepack_parameters, only: pndaspect, albedo_type, albicev, albicei, albsnowv, albsnowi, ahmax
       use icepack_parameters, only: snw_ssp_table, modal_aero
       use icepack_parameters, only: dEdd_algae
+      use icepack_parameters, only: hpmin, hp0
 
       use icepack_tracers,    only: ncat, nilyr, nslyr, nblyr
       use icepack_tracers,    only: ntrcr, nbtrcr_sw
@@ -113,10 +114,6 @@
       public :: icepack_prep_radiation, &
                 icepack_init_radiation, &
                 icepack_step_radiation
-
-      real (kind=dbl_kind), parameter :: &
-         hpmin  = 0.005_dbl_kind, & ! minimum allowed melt pond depth (m)
-         hp0    = 0.200_dbl_kind    ! pond depth below which transition to bare ice
 
       real (kind=dbl_kind), parameter :: &
          exp_argmax = c10    ! maximum argument of exponential
