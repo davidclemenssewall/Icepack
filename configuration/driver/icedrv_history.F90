@@ -51,6 +51,7 @@
       use icedrv_flux, only: Tair, Qa, fsw, fcondtop
       use icedrv_flux, only: meltt, meltb, meltl, snoice
       use icedrv_flux, only: dsnow, congel, sst, sss, Tf, fhocn
+      use icedrv_flux, only: albice, albsno, albpnd, apeff_ai, snowfrac
       use icedrv_arrays_column, only: d_afsd_newi, d_afsd_latg, d_afsd_latm, d_afsd_wave, d_afsd_weld
 #ifdef USE_NETCDF
       use netcdf
@@ -79,7 +80,7 @@
       real (kind=dbl_kind),allocatable :: &
          value1(:), value2(:,:), value3(:,:,:), value4(:,:,:,:)  ! temporary
 
-      integer (kind=dbl_kind), parameter :: num_2d = 32
+      integer (kind=dbl_kind), parameter :: num_2d = 37
       character(len=16), parameter :: fld_2d(num_2d) = &
          (/ 'aice            ', 'vice            ', 'vsno            ', &
             'uvel            ', 'vvel            ', 'divu            ', &
@@ -91,7 +92,9 @@
             'fsw             ', 'fcondtop        ', 'meltt           ', &
             'meltb           ', 'meltl           ', 'snoice          ', &
             'dsnow           ', 'congel          ', 'sst             ', &
-            'sss             ', 'Tf              ', 'fhocn           '    /)
+            'sss             ', 'Tf              ', 'fhocn           ', &
+            'albice          ', 'albsno          ', 'albpnd          ', &
+            'apeff_ai        ', 'snowfrac        ' /)
 
       integer (kind=dbl_kind), parameter :: num_3d_ncat = 3
       character(len=16), parameter :: fld_3d_ncat(num_3d_ncat) = &
@@ -340,6 +343,11 @@
          if (trim(fld_2d(n)) == 'sss')      value2(1:count2(1),1) = sss(1:count2(1))
          if (trim(fld_2d(n)) == 'Tf')       value2(1:count2(1),1) = Tf(1:count2(1))
          if (trim(fld_2d(n)) == 'fhocn')    value2(1:count2(1),1) = fhocn(1:count2(1))
+         if (trim(fld_2d(n)) == 'albice')   value2(1:count2(1),1) = albice(1:count2(1))
+         if (trim(fld_2d(n)) == 'albsno')   value2(1:count2(1),1) = albsno(1:count2(1))
+         if (trim(fld_2d(n)) == 'albpnd')   value2(1:count2(1),1) = albpnd(1:count2(1))
+         if (trim(fld_2d(n)) == 'apeff_ai') value2(1:count2(1),1) = apeff_ai(1:count2(1))
+         if (trim(fld_2d(n)) == 'snowfrac') value2(1:count2(1),1) = snowfrac(1:count2(1))
 
          status = nf90_inq_varid(ncid,trim(fld_2d(n)),varid)
          if (status /= nf90_noerr) call icedrv_system_abort(string=subname//' ERROR: inq_var '//trim(fld_2d(n)))
