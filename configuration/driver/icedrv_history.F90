@@ -52,6 +52,7 @@
       use icedrv_flux, only: meltt, meltb, meltl, snoice
       use icedrv_flux, only: dsnow, congel, sst, sss, Tf, fhocn
       use icedrv_flux, only: albice, albsno, albpnd, apeff_ai, snowfrac
+      use icedrv_arrays_column, only: albicen, albsnon, albpndn, apeffn, snowfracn
       use icedrv_arrays_column, only: d_afsd_newi, d_afsd_latg, d_afsd_latm, d_afsd_wave, d_afsd_weld
 #ifdef USE_NETCDF
       use netcdf
@@ -96,9 +97,11 @@
             'albice          ', 'albsno          ', 'albpnd          ', &
             'apeff_ai        ', 'snowfrac        ' /)
 
-      integer (kind=dbl_kind), parameter :: num_3d_ncat = 3
+      integer (kind=dbl_kind), parameter :: num_3d_ncat = 8
       character(len=16), parameter :: fld_3d_ncat(num_3d_ncat) = &
-         (/ 'aicen           ', 'vicen           ', 'vsnon           ' /)
+         (/ 'aicen           ', 'vicen           ', 'vsnon           ', &
+            'albicen         ', 'albsnon         ', 'albpndn         ', &
+            'apeffn          ', 'snowfracn       ' /)
 
       logical (kind=log_kind) :: &
          tr_fsd                          ! flag for tracing fsd
@@ -373,6 +376,12 @@
          if (trim(fld_3d_ncat(n)) == 'aicen') value3(1:count3(1),1:count3(2),1) = aicen(1:count3(1),1:count3(2))
          if (trim(fld_3d_ncat(n)) == 'vicen') value3(1:count3(1),1:count3(2),1) = vicen(1:count3(1),1:count3(2))
          if (trim(fld_3d_ncat(n)) == 'vsnon') value3(1:count3(1),1:count3(2),1) = vsnon(1:count3(1),1:count3(2))
+
+         if (trim(fld_3d_ncat(n)) == 'albicen') value3(1:count3(1),1:count3(2),1) = albicen(1:count3(1),1:count3(2))
+         if (trim(fld_3d_ncat(n)) == 'albsnon') value3(1:count3(1),1:count3(2),1) = albsnon(1:count3(1),1:count3(2))
+         if (trim(fld_3d_ncat(n)) == 'albpndn') value3(1:count3(1),1:count3(2),1) = albpndn(1:count3(1),1:count3(2))
+         if (trim(fld_3d_ncat(n)) == 'apeffn') value3(1:count3(1),1:count3(2),1) = apeffn(1:count3(1),1:count3(2))
+         if (trim(fld_3d_ncat(n)) == 'snowfracn') value3(1:count3(1),1:count3(2),1) = snowfracn(1:count3(1),1:count3(2))
 
          status = nf90_inq_varid(ncid,trim(fld_3d_ncat(n)),varid)
          if (status /= nf90_noerr) call icedrv_system_abort(string=subname//' ERROR: inq_var '//trim(fld_3d_ncat(n)))
