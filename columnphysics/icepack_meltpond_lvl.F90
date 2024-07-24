@@ -45,7 +45,8 @@
                                    Tsfcn,  alvl,         &
                                    apnd,   hpnd,  ipnd,  &
                                    meltsliqn, frpndn,    &
-                                   rfpndn, ilpndn)
+                                   rfpndn, ilpndn,       &
+                                   flpndn)
 
       real (kind=dbl_kind), intent(in) :: &
          dt          ! time step (s)
@@ -68,7 +69,8 @@
          apnd, hpnd, ipnd, &
          frpndn, &   ! pond drainage rate due to freeboard constraint (m/step)
          rfpndn, &   ! runoff rate due to rfrac (m/step)
-         ilpndn      ! pond loss/gain due to ice lid (m/step)
+         ilpndn, &   ! pond loss/gain due to ice lid (m/step)
+         flpndn      ! pond flushing rate due to ice permeability (m/s)
 
       real (kind=dbl_kind), dimension (:), intent(in) :: &
          qicen, &  ! ice layer enthalpy (J m-3)
@@ -259,6 +261,7 @@
                     + 0.5*dvpondn/(pndaspect*apondn), alvl_tmp))
                hpondn = c0
                if (apondn > puny) hpondn = vpondn/apondn
+               flpndn = -dvpondn
             endif
 
          endif
