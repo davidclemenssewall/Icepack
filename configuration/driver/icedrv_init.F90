@@ -1435,10 +1435,11 @@
       real (kind=dbl_kind), dimension(nslyr) :: &
          qsn             ! snow enthalpy (J/m3)
 
-      logical (kind=log_kind) :: tr_brine, tr_lvl, tr_fsd, tr_snow
+      logical (kind=log_kind) :: tr_brine, tr_lvl, tr_fsd, tr_snow, tr_pond
       integer (kind=int_kind) :: nt_Tsfc, nt_qice, nt_qsno, nt_sice, nt_fsd
       integer (kind=int_kind) :: nt_fbri, nt_alvl, nt_vlvl
       integer (kind=int_kind) :: nt_rhos, nt_rsnw, nt_smice, nt_smliq
+      integer (kind=int_kind) :: nt_apnd, nt_hpnd
 
       character(len=*), parameter :: subname='(set_state_var)'
 
@@ -1447,12 +1448,13 @@
       !-----------------------------------------------------------------
 
       call icepack_query_tracer_flags(tr_brine_out=tr_brine, tr_lvl_out=tr_lvl, &
-           tr_fsd_out=tr_fsd, tr_snow_out=tr_snow)
+           tr_fsd_out=tr_fsd, tr_snow_out=tr_snow, tr_pond_out=tr_pond)
       call icepack_query_tracer_indices(nt_Tsfc_out=nt_Tsfc, nt_qice_out=nt_qice, &
            nt_qsno_out=nt_qsno, nt_sice_out=nt_sice, nt_fsd_out=nt_fsd, &
            nt_fbri_out=nt_fbri, nt_alvl_out=nt_alvl, nt_vlvl_out=nt_vlvl, &
            nt_rsnw_out=nt_rsnw, nt_rhos_out=nt_rhos, &
-           nt_smice_out=nt_smice, nt_smliq_out=nt_smliq)
+           nt_smice_out=nt_smice, nt_smliq_out=nt_smliq, &
+           nt_apnd_out=nt_apnd, nt_hpnd_out=nt_hpnd)
       call icepack_query_parameters(rhos_out=rhos, Lfresh_out=Lfresh, puny_out=puny, &
            rsnw_fall_out=rsnw_fall)
       call icepack_warnings_flush(nu_diag)
