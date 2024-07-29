@@ -63,6 +63,16 @@
          hs_itd_nc3,     & ! initial snow thickness for category 3 in itd cell
          hs_itd_nc4,     & ! initial snow thickness for category 4 in itd cell
          hs_itd_nc5,     & ! initial snow thickness for category 5 in itd cell
+         ap_itd_nc1,     & ! initial pond fraction for category 1 in itd cell
+         ap_itd_nc2,     & ! initial pond fraction for category 2 in itd cell
+         ap_itd_nc3,     & ! initial pond fraction for category 3 in itd cell
+         ap_itd_nc4,     & ! initial pond fraction for category 4 in itd cell
+         ap_itd_nc5,     & ! initial pond fraction for category 5 in itd cell
+         hp_itd_nc1,     & ! initial pond depth for category 1 in itd cell
+         hp_itd_nc2,     & ! initial pond depth for category 2 in itd cell
+         hp_itd_nc3,     & ! initial pond depth for category 3 in itd cell
+         hp_itd_nc4,     & ! initial pond depth for category 4 in itd cell
+         hp_itd_nc5,     & ! initial pond depth for category 5 in itd cell
          sst_init          ! initial sea surface temperature (C)
 
 !=======================================================================
@@ -166,7 +176,10 @@
         sst_init,       hi_itd_nc1,     hi_itd_nc2,     hi_itd_nc3,     &
         hi_itd_nc4,     hi_itd_nc5,     hs_itd_nc1,     hs_itd_nc2,     &
         hs_itd_nc3,     hs_itd_nc4,     hs_itd_nc5,     ai_itd_nc1,     &
-        ai_itd_nc2,     ai_itd_nc3,     ai_itd_nc4,     ai_itd_nc5     
+        ai_itd_nc2,     ai_itd_nc3,     ai_itd_nc4,     ai_itd_nc5,     &
+        ap_itd_nc1,     ap_itd_nc2,     ap_itd_nc3,     ap_itd_nc4,     &
+        ap_itd_nc5,     hp_itd_nc1,     hp_itd_nc2,     hp_itd_nc3,     &
+        hp_itd_nc4,     hp_itd_nc5     
 
       namelist /grid_nml/ &
         kcatbound
@@ -297,10 +310,10 @@
       !hbar_init_itd  = c3            ! hbar for ice thickness for itd cell (nx=3)
       !hsno_init_itd  = 0.25_dbl_kind ! initial snow thickness for itd cell (nx=3)
       hi_itd_nc1     = 0.300_dbl_kind ! initial ice thickness for cat 1 itd cell
-      hi_itd_nc1     = 1.000_dbl_kind ! initial ice thickness for cat 2 itd cell
-      hi_itd_nc1     = 1.900_dbl_kind ! initial ice thickness for cat 3 itd cell
-      hi_itd_nc1     = 3.000_dbl_kind ! initial ice thickness for cat 4 itd cell
-      hi_itd_nc1     = 4.600_dbl_kind ! initial ice thickness for cat 5 itd cell
+      hi_itd_nc2     = 1.000_dbl_kind ! initial ice thickness for cat 2 itd cell
+      hi_itd_nc3     = 1.900_dbl_kind ! initial ice thickness for cat 3 itd cell
+      hi_itd_nc4     = 3.000_dbl_kind ! initial ice thickness for cat 4 itd cell
+      hi_itd_nc5     = 4.600_dbl_kind ! initial ice thickness for cat 5 itd cell
       ai_itd_nc1     = 0.057_dbl_kind ! initial area fraction for cat 1 itd cell
       ai_itd_nc2     = 0.167_dbl_kind ! initial area fraction for cat 2 itd cell
       ai_itd_nc3     = 0.260_dbl_kind ! initial area fraction for cat 3 itd cell
@@ -311,6 +324,16 @@
       hs_itd_nc3     = 0.250_dbl_kind ! initial snow depth for cat 3 itd cell
       hs_itd_nc4     = 0.250_dbl_kind ! initial snow depth for cat 4 itd cell
       hs_itd_nc5     = 0.250_dbl_kind ! initial snow depth for cat 5 itd cell
+      ap_itd_nc1     = c0    ! initial pond area for cat 1 itd cell
+      ap_itd_nc2     = c0    ! initial pond area for cat 2 itd cell
+      ap_itd_nc3     = c0    ! initial pond area for cat 3 itd cell
+      ap_itd_nc4     = c0    ! initial pond area for cat 4 itd cell
+      ap_itd_nc5     = c0    ! initial pond area for cat 5 itd cell
+      hp_itd_nc1     = c0    ! initial pond depth for cat 1 itd cell
+      hp_itd_nc2     = c0    ! initial pond depth for cat 2 itd cell
+      hp_itd_nc3     = c0    ! initial pond depth for cat 3 itd cell
+      hp_itd_nc4     = c0    ! initial pond depth for cat 4 itd cell
+      hp_itd_nc5     = c0    ! initial pond depth for cat 5 itd cell
       sst_init       = -1.8_dbl_kind ! initial mixed layer temperature (all cells)
       ndtd = 1               ! dynamic time steps per thermodynamic time step
       l_mpond_fresh = .false.     ! logical switch for including meltpond freshwater
@@ -1626,6 +1649,23 @@
             enddo               ! nslyr
          endif
       enddo                  ! ncat
+      if (tr_pond) then
+         n = 1
+         trcrn(i,nt_apnd,n) = ap_itd_nc1
+         trcrn(i,nt_hpnd,n) = hp_itd_nc1
+         n = 2
+         trcrn(i,nt_apnd,n) = ap_itd_nc2
+         trcrn(i,nt_hpnd,n) = hp_itd_nc2
+         n = 3
+         trcrn(i,nt_apnd,n) = ap_itd_nc3
+         trcrn(i,nt_hpnd,n) = hp_itd_nc3
+         n = 4
+         trcrn(i,nt_apnd,n) = ap_itd_nc4
+         trcrn(i,nt_hpnd,n) = hp_itd_nc4
+         n = 5
+         trcrn(i,nt_apnd,n) = ap_itd_nc5
+         trcrn(i,nt_hpnd,n) = hp_itd_nc5
+      endif             ! tr_pond
       call icepack_warnings_flush(nu_diag)
       if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
           file=__FILE__, line=__LINE__)
