@@ -46,8 +46,23 @@
       real (kind=dbl_kind), public :: &
          hi_init_slab,   & ! initial ice thickness for slab cell (nx=2)
          hsno_init_slab, & ! initial snow thickness for slab cell (nx=2)
-         hbar_init_itd,  & ! hbar for ice thickness for itd cell (nx=3)
-         hsno_init_itd,  & ! initial snow thickness for itd cell (nx=3)
+         !hbar_init_itd,  & ! hbar for ice thickness for itd cell (nx=3)
+         !hsno_init_itd,  & ! initial snow thickness for itd cell (nx=3)
+         hi_itd_nc1,     & ! initial ice thickness for category 1 in itd cell
+         hi_itd_nc2,     & ! initial ice thickness for category 2 in itd cell
+         hi_itd_nc3,     & ! initial ice thickness for category 3 in itd cell
+         hi_itd_nc4,     & ! initial ice thickness for category 4 in itd cell
+         hi_itd_nc5,     & ! initial ice thickness for category 5 in itd cell
+         ai_itd_nc1,     & ! initial area fraction for category 1 in itd cell
+         ai_itd_nc2,     & ! initial area fraction for category 2 in itd cell
+         ai_itd_nc3,     & ! initial area fraction for category 3 in itd cell
+         ai_itd_nc4,     & ! initial area fraction for category 4 in itd cell
+         ai_itd_nc5,     & ! initial area fraction for category 5 in itd cell
+         hs_itd_nc1,     & ! initial snow thickness for category 1 in itd cell
+         hs_itd_nc2,     & ! initial snow thickness for category 2 in itd cell
+         hs_itd_nc3,     & ! initial snow thickness for category 3 in itd cell
+         hs_itd_nc4,     & ! initial snow thickness for category 4 in itd cell
+         hs_itd_nc5,     & ! initial snow thickness for category 5 in itd cell
          sst_init          ! initial sea surface temperature (C)
 
 !=======================================================================
@@ -149,8 +164,11 @@
         restart_format, &
         dumpfreq,       diagfreq,       diag_file,       cpl_bgc,       &
         conserv_check,  history_format,                                 &
-        hi_init_slab,   hsno_init_slab, hbar_init_itd,   hsno_init_itd, &
-        sst_init
+        hi_init_slab,   hsno_init_slab, &!hbar_init_itd,   hsno_init_itd, &
+        sst_init,       hi_itd_nc1,     hi_itd_nc2,     hi_itd_nc3,     &
+        hi_itd_nc4,     hi_itd_nc5,     hs_itd_nc1,     hs_itd_nc2,     &
+        hs_itd_nc3,     hs_itd_nc4,     hs_itd_nc5,     ai_itd_nc1,     &
+        ai_itd_nc2,     ai_itd_nc3,     ai_itd_nc4,     ai_itd_nc5     
 
       namelist /grid_nml/ &
         kcatbound
@@ -282,8 +300,23 @@
                                   ! otherwise, the filename for reading restarts
       hi_init_slab   = c2            ! initial ice thickness for slab cell (nx=2)
       hsno_init_slab = c0            ! initial snow thickness for slab cell (nx=2)
-      hbar_init_itd  = c3            ! hbar for ice thickness for itd cell (nx=3)
-      hsno_init_itd  = 0.25_dbl_kind ! initial snow thickness for itd cell (nx=3)
+      !hbar_init_itd  = c3            ! hbar for ice thickness for itd cell (nx=3)
+      !hsno_init_itd  = 0.25_dbl_kind ! initial snow thickness for itd cell (nx=3)
+      hi_itd_nc1     = 0.300_dbl_kind ! initial ice thickness for cat 1 itd cell
+      hi_itd_nc1     = 1.000_dbl_kind ! initial ice thickness for cat 2 itd cell
+      hi_itd_nc1     = 1.900_dbl_kind ! initial ice thickness for cat 3 itd cell
+      hi_itd_nc1     = 3.000_dbl_kind ! initial ice thickness for cat 4 itd cell
+      hi_itd_nc1     = 4.600_dbl_kind ! initial ice thickness for cat 5 itd cell
+      ai_itd_nc1     = 0.057_dbl_kind ! initial area fraction for cat 1 itd cell
+      ai_itd_nc2     = 0.167_dbl_kind ! initial area fraction for cat 2 itd cell
+      ai_itd_nc3     = 0.260_dbl_kind ! initial area fraction for cat 3 itd cell
+      ai_itd_nc4     = 0.301_dbl_kind ! initial area fraction for cat 4 itd cell
+      ai_itd_nc5     = 0.215_dbl_kind ! initial area fraction for cat 5 itd cell
+      hs_itd_nc1     = 0.060_dbl_kind ! initial snow depth for cat 1 itd cell
+      hs_itd_nc2     = 0.200_dbl_kind ! initial snow depth for cat 2 itd cell
+      hs_itd_nc3     = 0.250_dbl_kind ! initial snow depth for cat 3 itd cell
+      hs_itd_nc4     = 0.250_dbl_kind ! initial snow depth for cat 4 itd cell
+      hs_itd_nc5     = 0.250_dbl_kind ! initial snow depth for cat 5 itd cell
       sst_init       = -1.8_dbl_kind ! initial mixed layer temperature (all cells)
       ndtd = 1               ! dynamic time steps per thermodynamic time step
       l_mpond_fresh = .false.     ! logical switch for including meltpond freshwater
@@ -700,8 +733,23 @@
          write(nu_diag,1030) ' ice_ic                    = ', trim(ice_ic)
          write(nu_diag,1005) ' hi_init_slab              = ', hi_init_slab
          write(nu_diag,1005) ' hsno_init_slab            = ', hsno_init_slab
-         write(nu_diag,1005) ' hbar_init_itd             = ', hbar_init_itd
-         write(nu_diag,1005) ' hsno_init_itd             = ', hsno_init_itd
+         !write(nu_diag,1005) ' hbar_init_itd             = ', hbar_init_itd
+         !write(nu_diag,1005) ' hsno_init_itd             = ', hsno_init_itd
+         write(nu_diag,1005) ' hi_itd_nc1                = ', hi_itd_nc1
+         write(nu_diag,1005) ' hi_itd_nc2                = ', hi_itd_nc2
+         write(nu_diag,1005) ' hi_itd_nc3                = ', hi_itd_nc3
+         write(nu_diag,1005) ' hi_itd_nc4                = ', hi_itd_nc4
+         write(nu_diag,1005) ' hi_itd_nc5                = ', hi_itd_nc5
+         write(nu_diag,1005) ' ai_itd_nc1                = ', ai_itd_nc1
+         write(nu_diag,1005) ' ai_itd_nc2                = ', ai_itd_nc2
+         write(nu_diag,1005) ' ai_itd_nc3                = ', ai_itd_nc3
+         write(nu_diag,1005) ' ai_itd_nc4                = ', ai_itd_nc4
+         write(nu_diag,1005) ' ai_itd_nc5                = ', ai_itd_nc5
+         write(nu_diag,1005) ' hs_itd_nc1                = ', hs_itd_nc1
+         write(nu_diag,1005) ' hs_itd_nc2                = ', hs_itd_nc2
+         write(nu_diag,1005) ' hs_itd_nc3                = ', hs_itd_nc3
+         write(nu_diag,1005) ' hs_itd_nc4                = ', hs_itd_nc4
+         write(nu_diag,1005) ' hs_itd_nc5                = ', hs_itd_nc5
          write(nu_diag,1005) ' sst_init                  = ', sst_init
          write(nu_diag,1010) ' conserv_check             = ', conserv_check
          write(nu_diag,1020) ' kitd                      = ', kitd
@@ -1514,31 +1562,47 @@
       if (i <= nx) then
       sst(i) = sst_init
       ! initial category areas in cells with ice
-      hbar = hbar_init_itd  ! initial ice thickness with greatest area
+      hinit(1) = hi_itd_nc1
+      hinit(2) = hi_itd_nc2
+      hinit(3) = hi_itd_nc3
+      hinit(4) = hi_itd_nc4
+      hinit(5) = hi_itd_nc5
+      ainit(1) = ai_itd_nc1
+      ainit(2) = ai_itd_nc2
+      ainit(3) = ai_itd_nc3
+      ainit(4) = ai_itd_nc4
+      ainit(5) = ai_itd_nc5
+      vsnon(i,1) = ainit(1)*hs_itd_nc1
+      vsnon(i,2) = ainit(2)*hs_itd_nc2
+      vsnon(i,3) = ainit(3)*hs_itd_nc3
+      vsnon(i,4) = ainit(4)*hs_itd_nc4
+      vsnon(i,5) = ainit(5)*hs_itd_nc5
+      
+      !hbar = hbar_init_itd  ! initial ice thickness with greatest area
       ! Note: the resulting average ice thickness
       ! tends to be less than hbar due to the
       ! nonlinear distribution of ice thicknesses
 
-      sum = c0
-      do n = 1, ncat
-         if (n < ncat) then
-            hinit(n) = p5*(hin_max(n-1) + hin_max(n)) ! m
-         else                ! n=ncat
-            hinit(n) = (hin_max(n-1) + c1) ! m
-         endif
+      !sum = c0
+      !do n = 1, ncat
+      !   if (n < ncat) then
+      !      hinit(n) = p5*(hin_max(n-1) + hin_max(n)) ! m
+      !   else                ! n=ncat
+      !      hinit(n) = (hin_max(n-1) + c1) ! m
+      !   endif
          ! parabola, max at h=hbar, zero at h=0, 2*hbar
-         ainit(n) = max(c0, (c2*hbar*hinit(n) - hinit(n)**2))
-         sum = sum + ainit(n)
-      enddo
-      do n = 1, ncat
-         ainit(n) = ainit(n) / (sum + puny/ncat) ! normalize
-      enddo
+      !   ainit(n) = max(c0, (c2*hbar*hinit(n) - hinit(n)**2))
+      !   sum = sum + ainit(n)
+      !enddo
+      !do n = 1, ncat
+      !   ainit(n) = ainit(n) / (sum + puny/ncat) ! normalize
+      !enddo
 
       do n = 1, ncat
          ! ice volume, snow volume
          aicen(i,n) = ainit(n)
          vicen(i,n) = hinit(n) * ainit(n) ! m
-         vsnon(i,n) = min(aicen(i,n)*hsno_init_itd,p2*vicen(i,n))
+         !vsnon(i,n) = min(aicen(i,n)*hsno_init_itd,p2*vicen(i,n))
          ! tracers
          call icepack_init_trcr(Tair     = Tair(i),     &
                                 Tf       = Tf(i),       &
