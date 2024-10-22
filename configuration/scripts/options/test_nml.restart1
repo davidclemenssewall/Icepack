@@ -1,3 +1,3 @@
-npt            = 10248
+npt            = 8760
 restart        = .false.
 dumpfreq       = 'm'
